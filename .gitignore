@@ -1,0 +1,13 @@
+# 録音・音声ファイル、クラッシュダンプは含めない
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.aac
+*.ogg
+*.aif
+*.aiff
+*.dmp
+node_modules/
+.DS_Store
+Thumbs.db
