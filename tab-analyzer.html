@@ -484,6 +484,80 @@ input[type=range]{accent-color:var(--acc)}
     <div class="legend">レポートには、概要・チェック結果・計算済みの騒音計 / 心理音響 / 次数解析 / 伝達関数の結果・マーカー・グラフの画像が入ります。開いたページでブラウザの「印刷」から「PDF に保存」を選んでください。</div>
   </div>
 </section>
+<section class="panel" id="sep">
+  <h2>10. 分離・修復・ピッチ編集</h2>
+  <div class="row" style="gap:8px;margin-bottom:4px">
+    <label class="sub">対象<select id="edScope"><option value="all">曲全体（トリム後）</option><option value="sel">4. の選択範囲</option></select></label>
+    <button id="edUndo" disabled title="10. で処理する前の音に戻して解析し直します">元の音に戻す</button>
+    <span id="edStatus" class="sub"></span>
+  </div>
+  <div class="note">処理した音は新しい解析結果として 1.〜8. に表示され、そのまま再生・比較できます（「元の音に戻す」で処理前に戻せます）。<b>タブ録音から作った音も保存・書き出しはできません。</b>自分のファイルと信号発生の音は、4. の「範囲を書き出し」で書き出せます。</div>
+  <div class="tabs" id="edTabs"><button data-tab="sep" class="on">分離</button><button data-tab="notes">音符・MIDI</button><button data-tab="fix">修復</button><button data-tab="pitch">ピッチ・時間</button></div>
+
+  <div class="pane" data-pane="sep">
+    <h3 style="margin-top:0">調波・打楽器</h3>
+    <div class="row"><select id="hpOut"><option value="harm">調波（持続音：歌・ベース・コード）</option><option value="perc">打楽器（アタック：ドラム・子音）</option></select><button id="hpRun" class="primary">分離して解析</button></div>
+    <h3>センター（ボーカル寄り）</h3>
+    <div class="row"><select id="ctOut"><option value="center">センターだけ（ボーカルなど）</option><option value="sides">センターを除く（カラオケ風）</option></select>
+      <span class="sub">強さ</span><input type="number" id="ctBeta" value="4" min="1" max="12" step="1">
+      <span class="sub">対象の帯域</span><input type="number" id="ctLo" value="120"><span class="sub">〜</span><input type="number" id="ctHi" value="8000"><span class="sub">Hz</span>
+      <button id="ctRun" class="primary">分離して解析</button></div>
+    <h3>帯域分割</h3>
+    <div class="row"><select id="bsOut"><option value="low">低域</option><option value="mid">中域</option><option value="high">高域</option></select>
+      <span class="sub">境界</span><input type="number" id="bsF1" value="200"><span class="sub">Hz /</span><input type="number" id="bsF2" value="2500"><span class="sub">Hz</span>
+      <button id="bsRun" class="primary">分割して解析</button></div>
+    <div class="legend">AI を使わない、信号処理による分離です（AI による楽器ごとの分離より精度は下がります）。調波・打楽器：時間方向に続く成分と周波数方向に広がる成分をメディアンフィルタで分けます（2 つを足すと元に戻ります）。センター：左右に同じ形で入っている成分を取り出します。「強さ」を上げるほど、左右に少しでも振られた音は除かれます。対象の帯域の外は、センターだけでは消え、センターを除くではそのまま残ります。帯域分割：直線位相 FIR で分け、3 つを足すと元に戻ります。</div>
+  </div>
+
+  <div class="pane" data-pane="notes" hidden>
+    <div class="row"><label class="sub">音域<select id="ntLo"></select></label><span class="sub">〜</span><select id="ntHi"></select>
+      <span class="sub">同時に鳴る音の上限</span><input type="number" id="ntPoly" value="6" min="1" max="10">
+      <label class="sub">感度<select id="ntSens"><option value="-30,0.3">低（大きい音だけ）</option><option value="-36,0.15" selected>標準</option><option value="-44,0.08">高（小さい音も）</option></select></label>
+      <label class="sub"><input type="checkbox" id="ntHarm" checked> 打楽器を除いてから検出</label>
+      <button id="ntRun" class="primary">音符を検出</button></div>
+    <div class="row" style="margin-top:4px"><button id="ntSynth" disabled>▶ 合成音で聴く</button>
+      <span class="sub">MIDI のテンポ</span><input type="number" id="ntBpm" value="120" min="20" max="300"><span class="sub">BPM</span><button id="ntMidi" disabled>MIDI を保存</button><span id="ntInfo" class="sub"></span></div>
+    <canvas id="cvNotes" style="margin-top:8px;cursor:pointer"></canvas>
+    <div class="legend">倍音の強さの和でピッチの強さを求め、強い音から順に倍音を差し引いて、同時に鳴っている音を探します。ピアノロールをクリックすると、その位置から元の音を再生します。打楽器・ノイズの多い曲や、オクターブで重なった音、低すぎる音は取りこぼしや誤検出が出ます（目安としてお使いください）。MIDI は一定テンポで書き出します（テンポには 2. の BPM 推定値が入ります）。</div>
+  </div>
+
+  <div class="pane" data-pane="fix" hidden>
+    <h3 style="margin-top:0">電源ハム</h3>
+    <div class="row"><select id="humF"><option value="auto">自動判定</option><option value="50">50 Hz</option><option value="60">60 Hz</option></select>
+      <span class="sub">倍音の数</span><input type="number" id="humN" value="8" min="1" max="40"><span class="sub">幅</span><input type="number" id="humBw" value="2" step="0.5"><span class="sub">Hz</span>
+      <button id="humRun" class="primary">除去して解析</button></div>
+    <h3>定常音（ピー音など）</h3>
+    <div class="row"><input type="text" id="toneF" placeholder="周波数（例：1000, 15734）" size="24"><span class="sub">幅</span><input type="number" id="toneBw" value="4"><span class="sub">Hz</span>
+      <button id="toneRun" class="primary">除去して解析</button></div>
+    <h3>背景雑音（ヒス・空調など）</h3>
+    <div class="row"><label class="sub">雑音の手本<select id="dnProf"><option value="auto">自動（静かな部分から推定）</option><option value="sel">4. の選択範囲（雑音だけの部分）</option></select></label>
+      <span class="sub">低減量</span><input type="number" id="dnRed" value="12" min="1" max="40"><span class="sub">dB　強さ</span><input type="number" id="dnAl" value="2" step="0.5" min="0.5" max="6">
+      <button id="dnRun" class="primary">低減して解析</button></div>
+    <h3>クリック・プチノイズ</h3>
+    <div class="row"><label class="sub">感度<select id="dcK"><option value="12">低</option><option value="8" selected>標準</option><option value="5">高</option></select></label>
+      <span class="sub">最大の長さ</span><input type="number" id="dcMax" value="2" step="0.5" min="0.1" max="10"><span class="sub">ms</span>
+      <button id="dcRun" class="primary">除去して解析</button></div>
+    <div class="row" style="margin-top:8px"><label class="sub"><input type="checkbox" id="fixDiff"> 取り除いた音を聴く（元の音 − 処理後）</label></div>
+    <div class="legend">ハム・定常音：狭いノッチフィルタを前後 2 回かけます（位相はずれません）。自動判定は長時間平均スペクトルで 50 / 60 Hz とその倍音の尖り具合を比べます。背景雑音：帯域ごとの雑音のパワーを手本にしたウィーナー型の低減です。強くしすぎると「シュワシュワ」した音（ミュージカルノイズ）が出ます。雑音だけの部分を 4. で選んで手本にすると精度が上がります。クリック：線形予測の誤差が前向き・後ろ向きの両方で飛び出た短い区間を探し、最小二乗 AR 補間でつなぎ直します。ドラムなどのアタックは誤差が大きいまま続くので除外しますが、アタックと重なったクリックは見逃すことがあります。</div>
+  </div>
+
+  <div class="pane" data-pane="pitch" hidden>
+    <h3 style="margin-top:0">音階への補正（単音向け）</h3>
+    <div class="row"><label class="sub">音階<select id="tnScale"><option value="chrom">半音（すべての音）</option><option value="key">曲のキー（推定）</option><option value="maj">メジャー</option><option value="min">マイナー</option></select></label>
+      <label class="sub">主音<select id="tnRoot"></select></label>
+      <span class="sub">補正量</span><input type="number" id="tnAmt" value="100" min="0" max="100"><span class="sub">%　速さ</span><input type="number" id="tnSpd" value="40" min="0" max="1000"><span class="sub">ms</span>
+      <span class="sub">声の高さの範囲</span><input type="number" id="tnFmin" value="70"><span class="sub">〜</span><input type="number" id="tnFmax" value="1000"><span class="sub">Hz</span>
+      <button id="tnRun" class="primary">補正して解析</button></div>
+    <canvas id="cvTune" style="margin-top:8px"></canvas>
+    <h3>ピッチシフト</h3>
+    <div class="row"><input type="number" id="psSemi" value="2" step="1" min="-24" max="24"><span class="sub">半音</span><input type="number" id="psCent" value="0" step="1" min="-100" max="100"><span class="sub">セント</span>
+      <button id="psRun" class="primary">シフトして解析</button></div>
+    <h3>タイムストレッチ（音程はそのまま）</h3>
+    <div class="row"><span class="sub">速さ</span><input type="number" id="tsPct" value="80" min="25" max="400"><span class="sub">%（100 = 元の速さ、50 = 半分の速さ）</span>
+      <button id="tsRun" class="primary">伸縮して解析</button></div>
+    <div class="legend">音階への補正：YIN 法で求めた基本周波数を、選んだ音階の一番近い音（A4 = 440 Hz）へ寄せ、TD-PSOLA で波形を並べ直します。「速さ」は目標の音へ寄せるまでの時間で、0 ms にするとケロケロした機械的な音、大きくするとビブラートが残る自然な補正になります。歌・単音の楽器向けで、和音や伴奏の入った音では正しく動きません。グラフは元のピッチ（青）と補正後のピッチ（橙）で、縦軸は MIDI のノート番号（60 = C4、1 = 半音）です。ピッチシフト・タイムストレッチ：位相ボコーダー（ピーク周辺の位相をロック）。シフトはフォルマントも一緒に動くため、大きくずらすと声の性質が変わります。</div>
+  </div>
+</section>
 </main>
 
 <script id="dsp">
@@ -2009,6 +2083,373 @@ function codecCompare(a,b,fs){
   const bands=BANDS.map(([name,lo,hi])=>{let p=0,q=0;for(let k=Math.ceil(lo/bh);k<sa.P.length&&k*bh<hi;k++){p+=sa.P[k];q+=sd.P[k];}return {name,lo,hi,db:p>0&&q>0?10*Math.log10(q/p):NaN};});
   return {tp:toDb(tp),sp:toDb(sp),over0,over1,nmr:ea>0&&ed>0?10*Math.log10(ed/ea):-Infinity,bands,cutoff:detectCutoff(avgSpectrum(mono(b),fs)),diff};
 }
+/* ---------- 分離・修復・ピッチ編集（10.） ---------- */
+function hannP(N){const w=new Float64Array(N);for(let i=0;i<N;i++)w[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);return w;}
+// 44.1 / 48 kHz を基準にした FFT サイズ（88.2 kHz 以上は 2 倍にして周波数分解能をそろえる）
+function sepN(fs,base){return fs>64000?base*2:base;}
+// STFT（ハン窓）。フレーム t は x[t·hop−N, t·hop) を見る（範囲外は 0）
+function stftC(x,N,hop){
+  const L=x.length,nb=N/2+1,nF=Math.ceil((L+N)/hop)+1,w=hannP(N);
+  const re=new Float32Array(nF*nb),im=new Float32Array(nF*nb),br=new Float64Array(N),bi=new Float64Array(N);
+  for(let t=0;t<nF;t++){
+    const s=t*hop-N;for(let i=0;i<N;i++){const j=s+i;br[i]=j>=0&&j<L?x[j]*w[i]:0;bi[i]=0;}
+    fft(br,bi);const o=t*nb;for(let k=0;k<nb;k++){re[o+k]=br[k];im[o+k]=bi[k];}
+  }
+  return {re,im,nF,nb,N,hop,L};
+}
+// 逆 STFT（合成窓もハン窓。窓の二乗和で割るので、どの hop でも元に戻る）
+function istftC(S,re,im){
+  const {nF,nb,N,hop,L}=S,w=hannP(N),y=new Float64Array(L),nr=new Float64Array(L),br=new Float64Array(N),bi=new Float64Array(N);
+  re=re||S.re;im=im||S.im;
+  for(let t=0;t<nF;t++){
+    const o=t*nb;
+    // 実信号の逆変換：conj(X) を順変換して実部を取る
+    for(let k=0;k<nb;k++){br[k]=re[o+k];bi[k]=-im[o+k];}
+    for(let k=1;k<N/2;k++){br[N-k]=re[o+k];bi[N-k]=im[o+k];}
+    fft(br,bi);
+    const s=t*hop-N;for(let i=0;i<N;i++){const j=s+i;if(j>=0&&j<L){y[j]+=br[i]/N*w[i];nr[j]+=w[i]*w[i];}}
+  }
+  const out=new Float32Array(L);for(let i=0;i<L;i++)out[i]=nr[i]>1e-9?y[i]/nr[i]:0;
+  return out;
+}
+// 長い音声は約 12 秒ずつ処理してメモリを抑える。各区間の前後に margin を足して処理し、中央だけを使う
+// （区間の開始を hop の倍数にそろえるので、つなぎ目でもフレームの位置は変わらない）
+function chunked(chs,margin,align,fn,prog,label){
+  const L=chs[0].length,C=1<<19,out=chs.map(()=>new Float32Array(L));
+  for(let a=0;a<L;a+=C){
+    if(prog)prog(label+" "+Math.round(100*a/L)+"%");
+    const b=Math.min(L,a+C),p0=Math.max(0,Math.floor((a-margin)/align)*align),p1=Math.min(L,b+margin);
+    const r=fn(chs.map(c=>c.subarray(p0,p1)));
+    for(let c=0;c<chs.length;c++)out[c].set(r[c].subarray(a-p0,b-p0),a);
+  }
+  return out;
+}
+function medianSmall(buf,n){
+  for(let i=1;i<n;i++){const v=buf[i];let j=i-1;while(j>=0&&buf[j]>v){buf[j+1]=buf[j];j--;}buf[j+1]=v;}
+  return n&1?buf[n>>1]:0.5*(buf[(n>>1)-1]+buf[n>>1]);
+}
+// 調波（持続音）・打楽器（アタック）の分離：メディアンフィルタによるソフトマスク（Fitzgerald 2010）
+function hpssSeg(chs,fs,o){
+  const N=sepN(fs,2048),hop=N/4,lt=o.lt||17,lf=o.lf||17,ht=lt>>1,hf=lf>>1,perc=o.out==="perc";
+  return chs.map(x=>{
+    const S=stftC(x,N,hop),{nF,nb,re,im}=S,n=nF*nb,mag=new Float32Array(n);
+    for(let i=0;i<n;i++)mag[i]=Math.hypot(re[i],im[i]);
+    const buf=new Float32Array(Math.max(lt,lf)),ore=new Float32Array(n),oim=new Float32Array(n);
+    for(let t=0;t<nF;t++)for(let k=0;k<nb;k++){
+      let c=0;for(let d=-ht;d<=ht;d++){const u=t+d;if(u>=0&&u<nF)buf[c++]=mag[u*nb+k];}
+      const H=medianSmall(buf,c);
+      c=0;for(let d=-hf;d<=hf;d++){const u=k+d;if(u>=0&&u<nb)buf[c++]=mag[t*nb+u];}
+      const P=medianSmall(buf,c),h2=H*H,p2=P*P,den=h2+p2,i=t*nb+k,m=den>0?(perc?p2:h2)/den:0.5;
+      ore[i]=re[i]*m;oim[i]=im[i]*m;
+    }
+    return istftC(S,ore,oim);
+  });
+}
+// センター（L と R に同じ形で入っている音）の抽出。類似度 2·Re(L·R*)/(|L|²+|R|²) をマスクにする（Avendano 2003 を簡略化）
+function centerSeg(chs,fs,o){
+  const N=sepN(fs,4096),hop=N/4,A=stftC(chs[0],N,hop),B=stftC(chs[1],N,hop),{nF,nb}=A,bh=fs/N,beta=o.beta||4;
+  const cr=new Float32Array(nF*nb),ci=new Float32Array(nF*nb);
+  for(let t=0;t<nF;t++)for(let k=0;k<nb;k++){
+    const i=t*nb+k,f=k*bh;if(f<o.lo||f>o.hi)continue;
+    const lr=A.re[i],li=A.im[i],rr=B.re[i],ri=B.im[i],e=lr*lr+li*li+rr*rr+ri*ri;if(e<=0)continue;
+    const m=Math.pow(Math.max(0,2*(lr*rr+li*ri)/e),beta);
+    cr[i]=m*(lr+rr)/2;ci[i]=m*(li+ri)/2;
+  }
+  const c=istftC(A,cr,ci);
+  if(o.out==="center")return [c,c.slice()];
+  const l=new Float32Array(c.length),r=new Float32Array(c.length);for(let i=0;i<c.length;i++){l[i]=chs[0][i]-c[i];r[i]=chs[1][i]-c[i];}
+  return [l,r];
+}
+// 帯域分割（直線位相 FIR。低域 + 中域 + 高域 = 元の音）
+function bandSplit(chs,fs,o){
+  const taps=f=>Math.min(32767,Math.max(255,Math.round(fs*4/f)|1));
+  return chs.map(x=>{
+    const lp1=firApply(x,firDesign("lowpass",o.f1,0,taps(o.f1),fs,8));
+    if(o.out==="low")return lp1;
+    const lp2=firApply(x,firDesign("lowpass",o.f2,0,taps(o.f2),fs,8)),y=new Float32Array(x.length);
+    for(let i=0;i<x.length;i++)y[i]=o.out==="mid"?lp2[i]-lp1[i]:x[i]-lp2[i];
+    return y;
+  });
+}
+// 電源ハムの基本周波数（50 / 60 Hz）を長時間平均スペクトルの尖り具合から判定。見つからなければ null
+function humDetect(mono,fs){
+  const sp=avgSpectrum(mono,fs,32768),bh=fs/sp.N,P=sp.P;
+  const prom=f=>{const k=Math.round(f/bh);let pk=0;for(let j=k-2;j<=k+2;j++)pk=Math.max(pk,P[j]);const a=[];for(let j=Math.round((f-15)/bh);j<=Math.round((f+15)/bh);j++)if(Math.abs(j-k)>Math.ceil(3/bh))a.push(P[j]);a.sort((x,y)=>x-y);return 10*Math.log10((pk+1e-30)/(a[a.length>>1]+1e-30));};
+  const score=f0=>{let s=0;for(let h=1;h<=4;h++)s+=Math.max(0,prom(f0*h));return s/4;};
+  const s50=score(50),s60=score(60),best=s50>=s60?50:60,sb=Math.max(s50,s60);
+  return {f0:sb>=6?best:null,s50,s60};
+}
+function zeroPhase(x,sos){const y=sosRun(x,sos);y.reverse();const z=sosRun(y,sos);z.reverse();return z;}
+// 指定周波数のノッチ（前後 2 回かけて位相のずれをなくす）。bw は −3 dB 帯域幅 [Hz]
+function notchRemove(chs,fs,freqs,bw){
+  const sos=freqs.filter(f=>f>0&&f<fs*0.45).map(f=>rbjBiquad("notch",f,f/bw,0,fs));
+  return sos.length?chs.map(x=>zeroPhase(x,sos)):chs.map(x=>x.slice());
+}
+// 雑音のプロファイル（帯域ごとの平均パワー）。範囲があればその平均、なければ各帯域の下位 10% から推定
+function noiseProfile(x,N,hop,s0,s1){
+  const nb=N/2+1,w=hannP(N),br=new Float64Array(N),bi=new Float64Array(N),P=new Float64Array(nb);
+  const frame=s=>{for(let i=0;i<N;i++){const j=s+i;br[i]=j>=0&&j<x.length?x[j]*w[i]:0;bi[i]=0;}fft(br,bi);};
+  if(s1-s0>=N){let c=0;for(let s=s0;s+N<=s1;s+=hop){frame(s);for(let k=0;k<nb;k++)P[k]+=br[k]*br[k]+bi[k]*bi[k];c++;}for(let k=0;k<nb;k++)P[k]/=c;return P;}
+  const nF=Math.max(1,Math.floor((x.length-N)/hop)+1),st=Math.max(1,Math.floor(nF/2000)),m=Math.ceil(nF/st),A=new Float32Array(m*nb);let c=0;
+  for(let t=0;t<nF;t+=st){frame(t*hop);for(let k=0;k<nb;k++)A[k*m+c]=br[k]*br[k]+bi[k]*bi[k];c++;}
+  const col=new Float32Array(c);
+  // 定常雑音の 1 帯域のパワーは指数分布なので、下位 10% 点 = 平均 × 0.105
+  for(let k=0;k<nb;k++){for(let j=0;j<c;j++)col[j]=A[k*m+j];col.sort();P[k]=col[Math.floor(c*0.1)]/0.105;}
+  return P;
+}
+// 雑音の低減（ウィーナー型のゲイン。下限 = −red dB、時間方向は下がるときだけゆっくり、周波数方向は 3 帯域で平均）
+function denoiseSeg(chs,fs,o,profiles){
+  const N=sepN(fs,2048),hop=N/4,gmin=Math.pow(10,-o.red/20),al=o.alpha||2,rel=Math.exp(-hop/fs/0.06);
+  return chs.map((x,ci)=>{
+    const S=stftC(x,N,hop),{nF,nb,re,im}=S,Pn=profiles[ci],g=new Float64Array(nb),gs=new Float64Array(nb).fill(1),gf=new Float64Array(nb);
+    for(let t=0;t<nF;t++){
+      const o0=t*nb;
+      for(let k=0;k<nb;k++){const p=re[o0+k]**2+im[o0+k]**2;g[k]=p>0?Math.max(gmin,1-al*Pn[k]/p):gmin;}
+      for(let k=0;k<nb;k++){const v=(g[Math.max(0,k-1)]+g[k]+g[Math.min(nb-1,k+1)])/3;gs[k]=v>gs[k]?v:gs[k]*rel+v*(1-rel);gf[k]=Math.max(gmin,gs[k]);}
+      for(let k=0;k<nb;k++){re[o0+k]*=gf[k];im[o0+k]*=gf[k];}
+    }
+    return istftC(S);
+  });
+}
+// 線形予測係数（自己相関法 + レビンソン）。x[i] ≈ Σ a[k]·x[i−k]
+function lpcCoef(x,s0,s1,p){
+  const n=s1-s0,r=new Float64Array(p+1),w=new Float64Array(n);
+  for(let i=0;i<n;i++)w[i]=x[s0+i]*(0.5-0.5*Math.cos(2*Math.PI*(i+0.5)/n));
+  for(let k=0;k<=p;k++){let s=0;for(let i=k;i<n;i++)s+=w[i]*w[i-k];r[k]=s;}
+  r[0]*=1+1e-9;r[0]+=1e-20;
+  const a=new Float64Array(p+1),tmp=new Float64Array(p+1);let e=r[0];
+  for(let i=1;i<=p;i++){let acc=r[i];for(let j=1;j<i;j++)acc-=a[j]*r[i-j];const k=acc/e;tmp.set(a);a[i]=k;for(let j=1;j<i;j++)a[j]=tmp[j]-k*tmp[i-j];e*=1-k*k;if(e<=0)break;}
+  return a;
+}
+// 最小二乗 AR 補間（Janssen ほか 1986）。y[g0..g1] を、AR 係数 a による予測誤差の二乗和が最小になる値で置き換える
+function lsarFill(y,g0,g1,a,p){
+  const L=g1-g0+1,bc=new Float64Array(p+1),c=new Float64Array(p+1);bc[0]=1;for(let j=1;j<=p;j++)bc[j]=-a[j];
+  for(let d=0;d<=p;d++){let v=0;for(let j=0;j+d<=p;j++)v+=bc[j]*bc[j+d];c[d]=v;}
+  const R=new Float64Array(L*L),r=new Float64Array(L);
+  for(let i=0;i<L;i++)for(let l=0;l<L;l++){const d=Math.abs(i-l);R[i*L+l]=d<=p?c[d]:0;}
+  for(let t=g0;t<=g1+p;t++){
+    let kp=0;for(let j=0;j<=p;j++){const ix=t-j;if(ix<g0||ix>g1)kp+=bc[j]*y[ix];}
+    for(let m=Math.max(g0,t-p);m<=Math.min(g1,t);m++)r[m-g0]-=bc[t-m]*kp;
+  }
+  // ガウスの消去法（部分ピボット）
+  for(let i=0;i<L;i++){
+    let pv=i;for(let q=i+1;q<L;q++)if(Math.abs(R[q*L+i])>Math.abs(R[pv*L+i]))pv=q;
+    if(pv!==i){for(let q=0;q<L;q++){const t=R[i*L+q];R[i*L+q]=R[pv*L+q];R[pv*L+q]=t;}const t=r[i];r[i]=r[pv];r[pv]=t;}
+    const d=R[i*L+i];if(Math.abs(d)<1e-30)return;
+    for(let q=i+1;q<L;q++){const f=R[q*L+i]/d;if(!f)continue;for(let w=i;w<L;w++)R[q*L+w]-=f*R[i*L+w];r[q]-=f*r[i];}
+  }
+  const u=new Float64Array(L);for(let i=L-1;i>=0;i--){let v=r[i];for(let q=i+1;q<L;q++)v-=R[i*L+q]*u[q];u[i]=v/R[i*L+i];}
+  for(let i=0;i<L;i++)y[g0+i]=u[i];
+}
+// クリック・プチノイズの除去：予測誤差が大きく飛び出た短い区間を、前後からの線形予測でつなぎ直す
+function declickCh(x,fs,o){
+  const y=Float32Array.from(x),p=32,B=4096,maxLen=Math.max(4,Math.round(fs*(o.maxMs||2)/1000)),k=o.k||8,ab=new Float64Array(B),bb=new Float64Array(B);let count=0;
+  // 前向き・後ろ向きの予測誤差がどちらも飛び出たサンプルのかたまり（間が p/2 以内なら同じかたまり）を探す。
+  // 前向きはクリックの後 p サンプル、後ろ向きは前 p サンプルまで誤差が残るので、両方そろうところがクリック本体。長すぎるもの（音楽のアタック）は除く
+  const find=(a,s,n)=>{
+    for(let i=0;i<n;i++){let v=y[s+i],w=v;for(let j=1;j<=p;j++){v-=a[j]*y[s+i-j];w-=a[j]*y[s+i+j];}ab[i]=Math.abs(v);bb[i]=Math.abs(w);}
+    const mf=ab.slice(0,n).sort()[n>>1]+1e-12,mb=bb.slice(0,n).sort()[n>>1]+1e-12,tf=k*1.4826*mf,tb=k*1.4826*mb,g=[],hit=i=>ab[i]>tf&&bb[i]>tb;
+    // クリックは孤立した飛び出し：その後（前向き）・その前（後ろ向き）の誤差はふだんの大きさに戻る。ドラムなどのアタックは誤差が大きいまま続くので除く
+    const W=128,loc=(t0,dir)=>{const v=new Float64Array(W);for(let q=0;q<W;q++){const t=t0+q*dir;if(t-p<0||t+p>=y.length){v[q]=0;continue;}let e=y[t];for(let j=1;j<=p;j++)e-=a[j]*(dir>0?y[t-j]:y[t+j]);v[q]=Math.abs(e);}v.sort();return v[W>>1];};
+    for(let i=0;i<n;i++){
+      if(!hit(i))continue;
+      let j=i,last=i;while(j<n&&j-last<=p/2){if(hit(j))last=j;j++;}
+      const g0=s+i-4,g1=s+last+4;if(last-i<=maxLen&&g0-p-W>=0&&g1+p+W<x.length&&loc(g1+p+1,1)<=3*mf&&loc(g0-p-1,-1)<=3*mb)g.push([g0,g1]);
+      i=last;
+    }
+    return g;
+  };
+  for(let s=p;s<x.length-p;s+=B){
+    const n=Math.min(B,x.length-p-s);if(n<p*4)break;
+    const c0=Math.max(0,s-B/2),c1=Math.min(x.length,s+n+B/2);
+    let a=lpcCoef(y,c0,c1,p),g=find(a,s,n);
+    if(!g.length)continue;
+    // クリックを直線で仮に埋めてから係数を求め直す（クリックを含んだままだと予測が狂う）
+    const z=y.slice(c0,c1);
+    for(const [g0,g1] of g){const u0=y[g0-1],u1=y[g1+1];for(let q=g0;q<=g1;q++)if(q>=c0&&q<c1)z[q-c0]=u0+(u1-u0)*(q-g0+1)/(g1-g0+2);}
+    a=lpcCoef(z,0,z.length,p);g=find(a,s,n);
+    for(const [g0,g1] of g){
+      // 最小二乗 AR 補間（LSAR）：つなぎ直す区間とその後 p サンプルの予測誤差の二乗和が最小になる値を求める
+      lsarFill(y,g0,g1,a,p);
+      count++;
+    }
+  }
+  return {y,count};
+}
+// 窓付き sinc による再標本化。y[i] = x(i·q)。カーネルは 2048 位相の表から線形補間
+function resampleSinc(x,q,outL){
+  const fc=Math.min(1,1/q),half=Math.ceil(16/fc),T=2*half,PH=2048,tab=new Float32Array((PH+1)*T);
+  for(let ph=0;ph<=PH;ph++)for(let j=0;j<T;j++){const d=ph/PH+half-1-j,u=d*fc,sn=u===0?1:Math.sin(Math.PI*u)/(Math.PI*u),r=d/half;tab[ph*T+j]=Math.abs(r)<1?fc*sn*(0.5+0.5*Math.cos(Math.PI*r)):0;}
+  const y=new Float32Array(outL);
+  for(let i=0;i<outL;i++){
+    const p=i*q,c=Math.floor(p),fr=(p-c)*PH,pi=Math.floor(fr),w1=fr-pi,o0=pi*T,o1=o0+T,j0=c-half+1;let s=0;
+    for(let j=0;j<T;j++){const ix=j0+j;if(ix<0||ix>=x.length)continue;s+=x[ix]*(tab[o0+j]*(1-w1)+tab[o1+j]*w1);}
+    y[i]=s;
+  }
+  return y;
+}
+// 位相ボコーダーによるタイムストレッチ（ピーク周辺の位相をロック：Laroche & Dolson 1999）。r = 出力の長さ / 入力の長さ
+function pvStretch(x,r,N){
+  const Hs=N/4,Ha=Hs/r,nb=N/2+1,w=hannP(N),L=x.length,outL=Math.round(L*r),off=N;
+  const y=new Float64Array(outL+2*N),nr=new Float64Array(outL+2*N),re=new Float64Array(N),im=new Float64Array(N);
+  const mag=new Float64Array(nb),ph=new Float64Array(nb),phPrev=new Float64Array(nb),phOut=new Float64Array(nb),phNew=new Float64Array(nb),pk=new Int32Array(nb),owner=new Int32Array(nb);
+  const TWO=2*Math.PI,wrap=v=>v-TWO*Math.round(v/TWO);
+  let prevSa=0,first=true;
+  const nOut=Math.ceil((outL+N/2)/Hs)+1;
+  for(let t=0;t<nOut;t++){
+    const sa=Math.round(t*Ha)-N/2,so=t*Hs-N/2;
+    for(let i=0;i<N;i++){const j=sa+i;re[i]=j>=0&&j<L?x[j]*w[i]:0;im[i]=0;}
+    fft(re,im);
+    for(let k=0;k<nb;k++){mag[k]=Math.hypot(re[k],im[k]);ph[k]=Math.atan2(im[k],re[k]);}
+    if(first){phOut.set(ph);first=false;}
+    else{
+      const dA=Math.max(1,sa-prevSa);
+      // ピーク（前後 2 帯域より大きい）を探し、各帯域を一番近いピークに割り当てる
+      let np=0;for(let k=2;k<nb-2;k++)if(mag[k]>mag[k-1]&&mag[k]>=mag[k+1]&&mag[k]>mag[k-2]&&mag[k]>=mag[k+2])pk[np++]=k;
+      if(!np){pk[np++]=1;}
+      for(let q=0;q<np;q++){const k=pk[q],om=TWO*k/N,dp=wrap(ph[k]-phPrev[k]-om*dA);phNew[k]=phOut[k]+(om+dp/dA)*Hs;}
+      let q=0;for(let k=0;k<nb;k++){while(q+1<np&&Math.abs(pk[q+1]-k)<Math.abs(pk[q]-k))q++;owner[k]=pk[q];}
+      for(let k=0;k<nb;k++){const o=owner[k];phOut[k]=o===k?phNew[k]:phNew[o]+(ph[k]-ph[o]);}
+    }
+    phPrev.set(ph);prevSa=sa;
+    for(let k=0;k<nb;k++){re[k]=mag[k]*Math.cos(phOut[k]);im[k]=-mag[k]*Math.sin(phOut[k]);}
+    for(let k=1;k<N/2;k++){re[N-k]=re[k];im[N-k]=-im[k];}
+    fft(re,im);
+    for(let i=0;i<N;i++){const j=so+i+off;if(j>=0&&j<y.length){y[j]+=re[i]/N*w[i];nr[j]+=w[i]*w[i];}}
+  }
+  const out=new Float32Array(outL);for(let i=0;i<outL;i++){const v=nr[i+off];out[i]=v>1e-6?y[i+off]/v:0;}
+  return out;
+}
+function pitchShift(x,semi,fs){const q=Math.pow(2,semi/12),y=pvStretch(x,q,sepN(fs,4096));return resampleSinc(y,q,x.length);}
+// 音階への補正（単音向け、TD-PSOLA）。YIN の基本周波数から目標の音を決め、ピッチマーク単位で波形を並べ直す
+function pitchCorrect(chs,fs,o,prog){
+  const L=chs[0].length,mono=new Float32Array(L);for(const c of chs)for(let i=0;i<L;i++)mono[i]+=c[i]/chs.length;
+  const pt=pitchTrack(mono,fs,o.fmin||70,o.fmax||1000,prog),hop=pt.hop,nF=pt.f0.length,a4=o.a4||440,scale=o.scale||[1,1,1,1,1,1,1,1,1,1,1,1];
+  // 5 フレームのメディアンで外れ値を除く
+  const f0=new Float64Array(nF).fill(NaN);
+  for(let i=0;i<nF;i++){if(!(pt.f0[i]>0))continue;const a=[];for(let d=-2;d<=2;d++){const v=pt.f0[i+d];if(v>0)a.push(v);}a.sort((x,y)=>x-y);f0[i]=a[a.length>>1];}
+  const midi=new Float64Array(nF).fill(NaN),tgt=new Float64Array(nF).fill(NaN),shift=new Float64Array(nF);
+  const snap=m=>{let best=NaN,bd=1e9;for(let c=Math.floor(m)-7;c<=Math.ceil(m)+7;c++){if(!scale[((c%12)+12)%12])continue;const d=Math.abs(c-m);if(d<bd){bd=d;best=c;}}return best;};
+  const a=o.speedMs>0?Math.exp(-hop*1000/o.speedMs):0;let cs=0,prevV=false;
+  for(let i=0;i<nF;i++){
+    if(!(f0[i]>0)){prevV=false;continue;}
+    const m=69+12*Math.log2(f0[i]/a4),t=snap(m),c=t-m;midi[i]=m;tgt[i]=t;
+    cs=prevV?a*cs+(1-a)*c:c;prevV=true;shift[i]=cs*(o.amount==null?1:o.amount);
+  }
+  // フレーム i の中心（秒）= i·hop + 20 ms
+  const tc=i=>i*hop+0.02,fAt=t=>{const i=Math.round((t-0.02)/hop);return i>=0&&i<nF?f0[i]:NaN;},bAt=t=>{const i=Math.round((t-0.02)/hop);return i>=0&&i<nF&&f0[i]>0?Math.pow(2,shift[i]/12):1;};
+  // 分析側のピッチマーク：有声部は 1 周期ごと（波形の正の山に寄せる。絶対値だと正負の山を行き来して周期が乱れる）、無声部は 5 ms ごと
+  const marks=[];let pos=0;const Tu=Math.round(fs*0.005);
+  while(pos<L){
+    const f=fAt(pos/fs);
+    if(f>0){const T=fs/f,c=Math.round(pos),r=Math.round(T/4);let bi=c,bv=-Infinity;for(let j=Math.max(0,c-r);j<=Math.min(L-1,c+r);j++){const v=mono[j];if(v>bv){bv=v;bi=j;}}
+      if(marks.length&&bi<=marks[marks.length-1])bi=marks[marks.length-1]+1;marks.push(bi);pos=bi+T;}
+    else{marks.push(Math.round(pos));pos+=Tu;}
+  }
+  const M=marks.length,per=k=>Math.max(8,k===0?marks[1]-marks[0]:k===M-1?marks[k]-marks[k-1]:(marks[k+1]-marks[k-1])/2);
+  const out=chs.map(()=>new Float64Array(L)),ws=new Float64Array(L);
+  let s=marks[0],k=0;
+  while(s<L){
+    while(k+1<M&&Math.abs(marks[k+1]-s)<=Math.abs(marks[k]-s))k++;
+    // 粒の長さは整数、間隔は小数のまま（丸めると音程がずれる）
+    const P=per(k),Pi=Math.round(P),m0=marks[k];
+    for(let j=-Pi;j<=Pi;j++){const wv=0.5+0.5*Math.cos(Math.PI*j/Pi),src=m0+j,dst=Math.round(s)+j;if(src<0||src>=L||dst<0||dst>=L)continue;for(let c=0;c<chs.length;c++)out[c][dst]+=chs[c][src]*wv;ws[dst]+=wv;}
+    s+=P/bAt(s/fs);
+  }
+  const res=out.map(o2=>{const y=new Float32Array(L);for(let i=0;i<L;i++)y[i]=ws[i]>0.1?o2[i]/ws[i]:o2[i];return y;});
+  const T=new Float32Array(nF);for(let i=0;i<nF;i++)T[i]=tc(i);
+  return {chs:res,track:{t:T,midi:Float32Array.from(midi),tgt:Float32Array.from(tgt),shift:Float32Array.from(shift)}};
+}
+// 音符の検出（和音を含む）：倍音の和によるピッチの強さを求め、強い音から順に倍音を差し引いて次の音を探す（Klapuri 2006 を簡略化）
+function detectNotes(mono,fs,o,prog){
+  const N=sepN(fs,8192),hop=N/16,nb=N/2+1,bh=fs/N,w=hannP(N),lo=o.lo||36,hi=o.hi||96,NP=hi-lo+1,maxPoly=o.maxPoly||6,H=10,fmaxH=Math.min(fs/2,6000);
+  const L=mono.length,nF=Math.max(0,Math.floor((L-N)/hop)+1),re=new Float64Array(N),im=new Float64Array(N),mag=new Float64Array(nb),r=new Float64Array(nb);
+  // 各音・各倍音が占める帯域（±半音の半分、最低 ±1 帯域）
+  const band=[];for(let p=0;p<NP;p++){const f0=440*Math.pow(2,(lo+p-69)/12),hs=[];for(let h=1;h<=H&&h*f0<fmaxH;h++){const f=h*f0,k0=Math.max(1,Math.min(Math.floor(f*Math.pow(2,-1/24)/bh),Math.round(f/bh)-1)),k1=Math.min(nb-1,Math.max(Math.ceil(f*Math.pow(2,1/24)/bh),Math.round(f/bh)+1));hs.push([k0,k1,1/Math.sqrt(h)]);}band.push(hs);}
+  const act=new Float32Array(nF*NP),sal=new Float64Array(NP);let gmax=0;
+  for(let t=0;t<nF;t++){
+    if(prog&&t%500===0)prog("音符の検出 "+Math.round(100*t/Math.max(1,nF))+"%");
+    const s=t*hop;for(let i=0;i<N;i++){re[i]=mono[s+i]*w[i];im[i]=0;}fft(re,im);
+    for(let k=0;k<nb;k++){mag[k]=Math.hypot(re[k],im[k]);r[k]=mag[k];}
+    let first=0;
+    for(let it=0;it<maxPoly;it++){
+      let bp=-1,bv=0;
+      // 基音がほとんどない候補は弱める（ド・ミ・ソの和音を 1 オクターブ下のドと誤る「ミッシングファンダメンタル」を防ぐ）
+      for(let p=0;p<NP;p++){let v=0,m1=0,mx=0,h=0;for(const [k0,k1,g] of band[p]){let m=0;for(let k=k0;k<=k1;k++)if(r[k]>m)m=r[k];v+=g*m;if(h++===0)m1=m;if(m>mx)mx=m;}v*=Math.min(1,m1/(0.15*mx+1e-30));sal[p]=v;if(v>bv){bv=v;bp=p;}}
+      if(bp<0||bv<=0||(it>0&&bv<first*(o.rel||0.15)))break;
+      if(it===0)first=bv;
+      act[t*NP+bp]=bv;if(bv>gmax)gmax=bv;
+      // この音の倍音のピークを 9 割差し引く
+      for(const [k0,k1] of band[bp]){let km=k0;for(let k=k0;k<=k1;k++)if(r[k]>r[km])km=k;for(let k=Math.max(0,km-2);k<=Math.min(nb-1,km+2);k++)r[k]*=0.1;}
+    }
+  }
+  // 立ち上がりの時刻を細かく求めるための短い窓のスペクトルフラックス
+  const Ns=sepN(fs,1024),hs=Ns/4,nS=Math.max(0,Math.floor((L-Ns)/hs)+1),flux=new Float32Array(nS),ws=hannP(Ns),rs=new Float64Array(Ns),is=new Float64Array(Ns),prev=new Float64Array(Ns/2+1);
+  for(let t=0;t<nS;t++){const s=t*hs;for(let i=0;i<Ns;i++){rs[i]=mono[s+i]*ws[i];is[i]=0;}fft(rs,is);let f=0;for(let k=1;k<=Ns/2;k++){const v=Math.log(1+1000*Math.hypot(rs[k],is[k]));if(t>0&&v>prev[k])f+=v-prev[k];prev[k]=v;}flux[t]=f;}
+  // 長い窓は立ち上がりの手前から音をとらえるので、検出位置より後ろを広く探す
+  const snapOn=t0=>{const c=Math.round((t0*fs-Ns/2)/hs);let bi=-1,bv=0;for(let j=Math.max(1,c-Math.round(N/8/hs));j<=Math.min(nS-2,c+Math.round(N/2/hs));j++)if(flux[j]>flux[j-1]&&flux[j]>=flux[j+1]&&flux[j]>bv){bv=flux[j];bi=j;}return bi>=0?(bi*hs+Ns/2)/fs:t0;};
+  const thr=gmax*Math.pow(10,(o.floorDb==null?-36:o.floorDb)/20),minF=Math.max(2,Math.round(0.06*fs/hop)),gap=2,notes=[];
+  for(let p=0;p<NP;p++){
+    let t=0;
+    while(t<nF){
+      if(act[t*NP+p]<thr){t++;continue;}
+      let e=t,last=t,mx=0,lmin=Infinity,start=t;
+      while(e<nF&&e-last<=gap){
+        const v=act[e*NP+p];
+        if(v>=thr){
+          // 一度弱まってから 6 dB 以上強くなったら、弾き直しとして分ける
+          if(v<lmin)lmin=v;
+          if(e-start>=minF&&v>lmin*2&&v>act[(e-1)*NP+p]*1.5){break;}
+          last=e;if(v>mx)mx=v;
+        }
+        e++;
+      }
+      // 長さは立ち上がりの位置を合わせた後で判定する（立ち上がりで広がったピークの残りは 30 ms ほどの短い音になる）
+      const t0=snapOn((start*hop+N/2)/fs),t1=(last*hop+N/2+hop)/fs;
+      if(last-start+1>=minF&&t1-t0>=0.06){notes.push({p:lo+p,t0,t1,v:Math.max(1,Math.min(127,Math.round(120+(20*Math.log10(mx/gmax))*2.5)))});}
+      t=last+1;
+    }
+  }
+  notes.sort((a,b)=>a.t0-b.t0||a.p-b.p);
+  return {notes,frames:nF,hop:hop/fs};
+}
+// 標準 MIDI ファイル（フォーマット 0、480 分解能、一定テンポ）
+function midiFile(notes,bpm){
+  const tpq=480,tps=tpq*bpm/60,ev=[];
+  for(const n of notes){ev.push([Math.round(n.t0*tps),0x90,n.p,n.v]);ev.push([Math.max(Math.round(n.t0*tps)+1,Math.round(n.t1*tps)),0x80,n.p,0]);}
+  ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const d=[],vlq=v=>{const b=[v&127];while(v>>=7)b.unshift((v&127)|128);d.push(...b);};
+  const us=Math.round(60e6/bpm);vlq(0);d.push(0xff,0x51,3,(us>>16)&255,(us>>8)&255,us&255);
+  let tp=0;for(const e of ev){vlq(e[0]-tp);tp=e[0];d.push(e[1],e[2],e[3]);}
+  vlq(0);d.push(0xff,0x2f,0);
+  const head=[0x4d,0x54,0x68,0x64,0,0,0,6,0,0,0,1,tpq>>8,tpq&255,0x4d,0x54,0x72,0x6b,(d.length>>>24)&255,(d.length>>16)&255,(d.length>>8)&255,d.length&255];
+  return Uint8Array.from(head.concat(d));
+}
+function notesJob(d,prog){
+  let x=d.x;
+  if(d.harm){const N=sepN(d.fs,2048),h=N/4;x=chunked([x],N+h*10.5,h,seg=>hpssSeg(seg,d.fs,{out:"harm"}),prog,"打楽器の除去")[0];}
+  return detectNotes(x,d.fs,d.o,prog);
+}
+// 10. の処理の振り分け。o.diff なら「取り除いた音」（元の音 − 処理後）を返す
+function editProcess(d,prog){
+  const {fs,op}=d,o=d.o||{},chs=d.chs;prog=prog||(()=>{});let out,extra={};
+  if(op==="hpss"){const N=sepN(fs,2048),h=N/4;out=chunked(chs,N+h*((o.lt||17)/2+2),h,seg=>hpssSeg(seg,fs,o),prog,"調波・打楽器の分離");}
+  else if(op==="center"){if(chs.length!==2)throw new Error("センターの抽出・除去はステレオ（2ch）の音声で使えます");const N=sepN(fs,4096);out=chunked(chs,2*N,N/4,seg=>centerSeg(seg,fs,o),prog,"センターの分離");}
+  else if(op==="band"){prog("帯域分割");out=bandSplit(chs,fs,o);}
+  else if(op==="hum"){
+    let f0=o.f0;if(f0==="auto"){const L=chs[0].length,m=new Float32Array(L);for(const c of chs)for(let i=0;i<L;i++)m[i]+=c[i]/chs.length;const r=humDetect(m,fs);extra.hum=r;f0=r.f0;if(!f0)throw new Error("電源ハム（50 / 60 Hz とその倍音）は見つかりませんでした");}
+    prog("ハムの除去");const fr=[];for(let h=1;h<=(o.nh||8);h++)fr.push(f0*h);extra.f0=f0;out=notchRemove(chs,fs,fr,o.bw||2);
+  }
+  else if(op==="tone"){prog("定常音の除去");out=notchRemove(chs,fs,o.freqs||[],o.bw||4);}
+  else if(op==="denoise"){const N=sepN(fs,2048),h=N/4;prog("雑音のプロファイル");const prof=chs.map(x=>noiseProfile(x,N,h,o.s0||0,o.s1||0));out=chunked(chs,N*2+h*40,h,seg=>denoiseSeg(seg,fs,o,prof),prog,"雑音の低減");}
+  else if(op==="declick"){let n=0;out=chs.map((x,i)=>{prog("クリックの除去 "+(i+1)+"/"+chs.length);const r=declickCh(x,fs,o);n+=r.count;return r.y;});extra.clicks=n;}
+  else if(op==="shift"){out=chs.map((x,i)=>{prog("ピッチシフト "+(i+1)+"/"+chs.length);return pitchShift(x,o.semi,fs);});}
+  else if(op==="stretch"){out=chs.map((x,i)=>{prog("タイムストレッチ "+(i+1)+"/"+chs.length);return pvStretch(x,o.ratio,sepN(fs,4096));});}
+  else if(op==="tune"){const r=pitchCorrect(chs,fs,o,prog);out=r.chs;extra.track=r.track;}
+  else throw new Error("unknown op "+op);
+  if(o.diff&&out[0].length===chs[0].length)out=out.map((y,c)=>{const z=new Float32Array(y.length);for(let i=0;i<y.length;i++)z[i]=chs[c][i]-y[i];return z;});
+  return Object.assign({chs:out},extra);
+}
 // ==DSP-END==
 </script>
 
@@ -2067,7 +2508,7 @@ const idb={
 const SEG_COL=["#8ab4ff","#c58aff","#5ad19a","#f5c04a","#ff8a65","#4dd0e1","#f48fb1","#aed581"];
 const segColor=l=>SEG_COL[(l.charCodeAt(0)-65)%SEG_COL.length];
 const pref={get:(k,d)=>{try{return localStorage.getItem(k)||d;}catch(e){return d;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
-let rec=null,current=null,refId=null,busy=false,lastRaw=null;
+let rec=null,current=null,refId=null,busy=false,lastRaw=null,editOrig=null; // editOrig：10. で処理する前の音（元に戻す用）
 let genre=GENRES[pref.get("tabAnalyzerGenre","general")]?pref.get("tabAnalyzerGenre","general"):"general";
 let scope=pref.get("tabAnalyzerScope","all")==="focus"?"focus":"all";
 
@@ -2079,7 +2520,8 @@ function updateButtons(){
   $("saveFmt").disabled=tabSrc;$("selExportNote").textContent=tabSrc?"タブ録音は書き出せません":"";
   $("optSaveAudio").disabled=tabSrc;$("saveAudioNote").textContent=tabSrc?"（タブ録音は数値のみ保存）":"";
   $("btnPlay").disabled=busy||!!rec||!lastRaw||!current;
-  $("selExport").disabled=busy||tabSrc;$("btnPitch").disabled=busy||!current||!lastRaw;
+  $("selExport").disabled=busy||tabSrc;
+  $("edUndo").disabled=busy||!editOrig;$("btnPitch").disabled=busy||!current||!lastRaw;
   if(cdcReady&&cdcReady.length)$("cdcRun").disabled=busy||!!rec||!current||!lastRaw;
 }
 function meter(pk,sec,mom,gaps){
@@ -2287,6 +2729,8 @@ self.onmessage=e=>{
     else if(d.cmd==="tf"){out=transferFunction(d.x,d.y,d.fs,d.N);}
     else if(d.cmd==="codec"){prog("トゥルーピーク・差分");out=codecCompare(d.a,d.b,d.fs);out.b=d.b;tr=out.diff.map(x=>x.buffer).concat(d.b.map(x=>x.buffer));}
     else if(d.cmd==="summary"){out=batchSummary(d.chs,d.fs,d.K,d.layout);}
+    else if(d.cmd==="edit"){out=editProcess(d,prog);tr=out.chs.map(c=>c.buffer);if(out.track)tr.push(out.track.t.buffer,out.track.midi.buffer,out.track.tgt.buffer,out.track.shift.buffer);}
+    else if(d.cmd==="notes"){out=notesJob(d,prog);}
     else{out={res:analyzeAll(d.chs,d.fs,Object.assign({},d.opts,{progress:prog})),chs:d.chs};tr=back;}
     self.postMessage({type:"done",out},tr);
   }catch(err){self.postMessage({type:"error",message:String(err&&err.message||err),chs:back.length?d.chs:null},back);}
@@ -2336,6 +2780,7 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
 async function run(chs,fs,info){
   if(busy)return;
   stopPlay();lastPos=0;abSide="A";$("playhead").style.display="none";$("playPos").textContent="";
+  if(!info.keepOrig)editOrig=null;
   busy=true;lastRaw=null;updateButtons();
   try{
     setStatus("解析中…");await tick();
@@ -4045,7 +4490,125 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="0"){e.preventDefault();setView(0,current.dur);}
 });
 // 上部バー・折りたたみ・ヘルプ
-const NAV=["録音","概要","チェック","波形","周波数","ステレオ","ピッチ","比較","音響解析"],PANELS=[...document.querySelectorAll("main section.panel")];
+/* ---------- 10. 分離・修復・ピッチ編集 ---------- */
+function edMsg(t,err){$("edStatus").textContent=t;$("edStatus").style.color=err?"var(--bad)":"";if(t){const b=$("tbStatus");b.textContent="10. "+t;b.className="sub"+(err?" err":"");}}
+function edRange(){
+  if(!current||!rawOK()){edMsg(busy?"他の処理が終わるまでお待ちください":"先に 1. で録音するか、ファイルを読み込んでください",true);return null;}
+  const fs=lastRaw.fs;
+  if($("edScope").value==="sel"){
+    if(!sel){edMsg("4. のグラフをドラッグして範囲を選んでください",true);return null;}
+    return {s0:current.trimStart+Math.floor(sel.a*fs),s1:Math.min(current.trimEnd,current.trimStart+Math.ceil(sel.b*fs)),t0:sel.a,isSel:true};
+  }
+  return {s0:current.trimStart,s1:current.trimEnd,t0:0,isSel:false};
+}
+// 処理した音を新しい解析結果にする。音源の種類（タブ録音か）は引き継ぐので、タブ録音から作った音も書き出せない
+async function edApply(op,o,label){
+  const r=edRange();if(!r)return null;
+  const fs=lastRaw.fs,chs=lastRaw.chs.map(c=>c.slice(r.s0,r.s1)),info={source:lastRaw.source,resampled:lastRaw.resampled,layout:lastRaw.layout};
+  if((r.s1-r.s0)<fs*0.2){edMsg("対象が短すぎます（0.2 秒以上にしてください）",true);return null;}
+  const orig=editOrig||{chs:lastRaw.chs.map(c=>c.slice()),fs,info:Object.assign({label:current.label},info)};
+  const base=current.label||"音声";
+  busy=true;updateButtons();edMsg(label+"…");let out;
+  try{out=await runJob({cmd:"edit",chs,fs,op,o},chs.map(c=>c.buffer),st=>edMsg(st),()=>editProcess({chs,fs,op,o}));}
+  catch(e){console.error(e);edMsg("処理できませんでした: "+e.message,true);return null;}
+  finally{busy=false;updateButtons();}
+  editOrig=orig;edMsg("");
+  await run(out.chs,fs,Object.assign({label:base+"（"+label+(r.isSel?"・選択範囲":"")+"）",keepOrig:true},info));
+  updateButtons();
+  return Object.assign(out,{t0:r.t0});
+}
+async function edUndo(){
+  if(!editOrig||busy)return;const o=editOrig;editOrig=null;
+  await run(o.chs,o.fs,Object.assign({},o.info));edMsg("処理前の音に戻しました");
+}
+const diffOn=()=>$("fixDiff").checked,diffLbl=()=>diffOn()?"・取り除いた音":"";
+$("edUndo").onclick=edUndo;
+$("edTabs").onclick=e=>{const t=e.target.getAttribute("data-tab");if(!t)return;
+  for(const b of $("edTabs").children)b.classList.toggle("on",b===e.target);
+  for(const p of document.querySelectorAll("#sep .pane"))p.hidden=p.getAttribute("data-pane")!==t;
+  if(t==="notes"&&ntRes)drawNotes();if(t==="pitch"&&tnRes)drawTune();};
+// 分離
+$("hpRun").onclick=()=>edApply("hpss",{out:$("hpOut").value},$("hpOut").value==="harm"?"調波":"打楽器");
+$("ctRun").onclick=()=>{const lo=Math.max(0,+$("ctLo").value||0),hi=Math.max(lo+10,+$("ctHi").value||24000);edApply("center",{out:$("ctOut").value,beta:Math.min(12,Math.max(1,+$("ctBeta").value||4)),lo,hi},$("ctOut").value==="center"?"センター":"センター除去");};
+$("bsRun").onclick=()=>{const f1=+$("bsF1").value,f2=+$("bsF2").value,nyq=lastRaw?lastRaw.fs/2:24000;if(!(f1>10&&f2>f1&&f2<nyq)){edMsg("境界は 10 Hz 〜 ナイキスト周波数の間で、低い方から順に入れてください",true);return;}
+  const b=$("bsOut").value;edApply("band",{out:b,f1,f2},b==="low"?"低域 〜"+f1+" Hz":b==="mid"?"中域 "+f1+"〜"+f2+" Hz":"高域 "+f2+" Hz〜");};
+// 修復
+$("humRun").onclick=async()=>{const v=$("humF").value,o={f0:v==="auto"?"auto":+v,nh:Math.max(1,Math.min(40,+$("humN").value||8)),bw:Math.max(0.2,+$("humBw").value||2),diff:diffOn()};
+  const out=await edApply("hum",o,"ハム除去"+(v==="auto"?"":" "+v+" Hz")+diffLbl());if(out&&v==="auto")edMsg("電源ハム "+out.f0+" Hz（と倍音 "+o.nh+" 本）を除去しました");};
+$("toneRun").onclick=()=>{const fr=$("toneF").value.split(/[,\s]+/).map(Number).filter(v=>v>0);if(!fr.length){edMsg("取り除く周波数を入れてください",true);return;}
+  edApply("tone",{freqs:fr,bw:Math.max(0.2,+$("toneBw").value||4),diff:diffOn()},"定常音除去 "+fr.join("/")+" Hz"+diffLbl());};
+$("dnRun").onclick=()=>{const o={red:Math.max(1,Math.min(40,+$("dnRed").value||12)),alpha:Math.max(0.5,Math.min(6,+$("dnAl").value||2)),diff:diffOn()};
+  if($("dnProf").value==="sel"){
+    if($("edScope").value==="sel"){o.s0=0;o.s1=1e12;}
+    else{if(!sel){edMsg("雑音だけの部分を 4. のグラフで選んでください",true);return;}const fs=lastRaw.fs;o.s0=Math.floor(sel.a*fs);o.s1=Math.ceil(sel.b*fs);}
+  }
+  edApply("denoise",o,"雑音低減 "+o.red+" dB"+diffLbl());};
+$("dcRun").onclick=async()=>{const out=await edApply("declick",{k:+$("dcK").value,maxMs:Math.max(0.1,Math.min(10,+$("dcMax").value||2)),diff:diffOn()},"クリック除去"+diffLbl());if(out)edMsg("クリックを "+out.clicks+" か所つなぎ直しました");};
+// ピッチ・時間
+for(let i=0;i<12;i++)$("tnRoot").add(new Option(NOTE[i],i));
+$("tnScale").onchange=()=>{$("tnRoot").disabled=$("tnScale").value==="chrom"||$("tnScale").value==="key";};$("tnScale").onchange();
+function edScale(){
+  const v=$("tnScale").value;if(v==="chrom")return null;
+  let root=+$("tnRoot").value,minor=v==="min";
+  if(v==="key"){if(!current||!current.key){edMsg("キーが推定できていません",true);return undefined;}root=current.key.best.tonic;minor=current.key.best.minor;}
+  const iv=minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11],sc=Array(12).fill(0);for(const i of iv)sc[(root+i)%12]=1;return sc;
+}
+let tnRes=null;
+$("tnRun").onclick=async()=>{const sc=edScale();if(sc===undefined)return;
+  const o={amount:Math.max(0,Math.min(100,+$("tnAmt").value))/100,speedMs:Math.max(0,+$("tnSpd").value||0),fmin:Math.max(40,+$("tnFmin").value||70),fmax:Math.min(2000,+$("tnFmax").value||1000)};if(sc)o.scale=sc;
+  const nm=$("tnScale").value==="chrom"?"半音":$("tnScale").value==="key"?current.key.best.name:NOTE[+$("tnRoot").value]+($("tnScale").value==="min"?" マイナー":" メジャー");
+  const out=await edApply("tune",o,"音階補正 "+nm+" "+Math.round(o.amount*100)+"%");
+  if(out&&out.track){tnRes=Object.assign(out.track,{t0:out.t0});drawTune();}};
+function drawTune(){
+  const r=tnRes;if(!r)return;const x=Array.from(r.t,v=>v+r.t0),orig=Array.from(r.midi),cor=orig.map((m,i)=>Number.isFinite(m)?m+r.shift[i]:NaN);
+  if(!orig.some(Number.isFinite)){prep($("cvTune"),60);return;}
+  drawXY($("cvTune"),200,[{x,y:orig,color:"#8ab4ff",lw:1.2,name:"元のピッチ"},{x,y:cor,color:"#f5c04a",lw:1.6,name:"補正後"}],{xmin:x[0],xmax:x[x.length-1],ystep:2,ylabel:"MIDI",legend:true});
+}
+$("psRun").onclick=()=>{const semi=(+$("psSemi").value||0)+(+$("psCent").value||0)/100;if(!semi||Math.abs(semi)>24){edMsg("−24〜+24 半音の範囲で、0 以外を入れてください",true);return;}
+  edApply("shift",{semi},"ピッチ "+(semi>0?"+":"")+(+semi.toFixed(2))+" 半音");};
+$("tsRun").onclick=()=>{const pct=+$("tsPct").value;if(!(pct>=25&&pct<=400)||pct===100){edMsg("速さは 25〜400%（100 以外）で入れてください",true);return;}
+  const r=edRange();if(r&&(r.s1-r.s0)*100/pct>lastRaw.fs*1200){edMsg("伸ばした後の長さが 20 分を超えます",true);return;}
+  edApply("stretch",{ratio:100/pct},"速さ "+pct+"%");};
+// 音符・MIDI
+const noteName=p=>NOTE[p%12]+(Math.floor(p/12)-1);
+for(let p=21;p<=108;p++){$("ntLo").add(new Option(noteName(p),p));$("ntHi").add(new Option(noteName(p),p));}
+$("ntLo").value="36";$("ntHi").value="96";
+let ntRes=null,ntAc=null;
+$("ntRun").onclick=async()=>{
+  const r=edRange();if(!r)return;const lo=+$("ntLo").value,hi=+$("ntHi").value;if(hi-lo<1){edMsg("音域は低い方から順に選んでください",true);return;}
+  const fs=lastRaw.fs,x=monoFromRaw(r.s0,r.s1),d={x,fs,harm:$("ntHarm").checked,o:{lo,hi,maxPoly:Math.max(1,Math.min(10,+$("ntPoly").value||6)),floorDb:+$("ntSens").value.split(",")[0],rel:+$("ntSens").value.split(",")[1]}};
+  busy=true;updateButtons();edMsg("音符の検出…");let out;
+  try{out=await runJob(Object.assign({cmd:"notes"},d),[x.buffer],st=>edMsg(st),()=>notesJob(d));}
+  catch(e){console.error(e);edMsg("検出できませんでした: "+e.message,true);return;}
+  finally{busy=false;updateButtons();}
+  ntRes={notes:out.notes,t0:r.t0,dur:(r.s1-r.s0)/fs,lo,hi,label:current.label};edMsg("");
+  if(current.bpm&&current.bpm.bpm)$("ntBpm").value=Math.round(current.bpm.bpm*10)/10;
+  $("ntInfo").textContent=out.notes.length?"音符 "+out.notes.length+" 個（"+noteName(Math.min(...out.notes.map(n=>n.p)))+"〜"+noteName(Math.max(...out.notes.map(n=>n.p)))+"）":"音符は見つかりませんでした";
+  $("ntSynth").disabled=$("ntMidi").disabled=!out.notes.length;drawNotes();
+};
+function drawNotes(){
+  const r=ntRes;if(!r)return;const {g,w,h}=prep($("cvNotes"),280),pl=40,pr=10,pt=8,pb=22,pw=w-pl-pr,ph=h-pt-pb;
+  const ps=r.notes.map(n=>n.p),pmin=ps.length?Math.min(...ps)-2:r.lo,pmax=ps.length?Math.max(...ps)+2:r.hi,rows=pmax-pmin+1,rh=ph/rows;
+  const X=t=>pl+t/r.dur*pw,Y=p=>pt+(pmax-p)*rh;
+  g.fillStyle="#1b1e27";g.fillRect(pl,pt,pw,ph);
+  g.font="10px sans-serif";
+  for(let p=pmin;p<=pmax;p++){const blk=[1,3,6,8,10].includes(p%12);if(blk){g.fillStyle="#161821";g.fillRect(pl,Y(p),pw,rh);}if(p%12===0){g.fillStyle="#343846";g.fillRect(pl,Y(p)+rh-1,pw,1);g.fillStyle="#9aa0b4";g.fillText(noteName(p),4,Y(p)+rh-1);}}
+  for(const n of r.notes){const a=Math.max(0.35,n.v/127);g.fillStyle="rgba(138,180,255,"+a+")";g.fillRect(X(n.t0),Y(n.p)+0.5,Math.max(2,X(n.t1)-X(n.t0)),Math.max(2,rh-1));}
+  g.fillStyle="#9aa0b4";const st=r.dur>240?60:r.dur>60?15:r.dur>20?5:1;for(let t=0;t<=r.dur;t+=st)g.fillText(fmtT(r.t0+t),X(t)-8,h-6);
+}
+$("cvNotes").onclick=e=>{const r=ntRes;if(!r||!current)return;const b=e.currentTarget.getBoundingClientRect(),pl=40,pw=b.width-50,t=(e.clientX-b.left-pl)/pw*r.dur;if(t>=0&&t<=r.dur)playFrom(r.t0+t);};
+function stopSynth(){if(ntAc){try{ntAc.close();}catch(e){}ntAc=null;}$("ntSynth").textContent="▶ 合成音で聴く";}
+$("ntSynth").onclick=()=>{
+  if(ntAc){stopSynth();return;}if(!ntRes||!ntRes.notes.length)return;stopPlay();
+  const ac=new (window.AudioContext||window.webkitAudioContext)(),t0=ac.currentTime+0.1,mg=ac.createGain();mg.gain.value=0.15;mg.connect(ac.destination);
+  const ns=ntRes.notes.slice(0,4000);let end=0;
+  for(const n of ns){const o=ac.createOscillator(),g=ac.createGain(),a=t0+n.t0,b=t0+n.t1;o.type="triangle";o.frequency.value=440*Math.pow(2,(n.p-69)/12);
+    g.gain.setValueAtTime(0,a);g.gain.linearRampToValueAtTime(n.v/127,a+0.01);g.gain.setTargetAtTime(0,b,0.04);o.connect(g);g.connect(mg);o.start(a);o.stop(b+0.3);end=Math.max(end,n.t1);}
+  ntAc=ac;$("ntSynth").textContent="■ 停止";const me=ac;setTimeout(()=>{if(ntAc===me)stopSynth();},(end+0.6)*1000);
+};
+$("ntMidi").onclick=()=>{if(!ntRes||!ntRes.notes.length)return;const bpm=Math.max(20,Math.min(300,+$("ntBpm").value||120));
+  download(new Blob([midiFile(ntRes.notes,bpm)],{type:"audio/midi"}),"notes-"+safeName(ntRes.label)+".mid");};
+const NAV=["録音","概要","チェック","波形","周波数","ステレオ","ピッチ","比較","音響解析","分離・編集"],PANELS=[...document.querySelectorAll("main section.panel")];
 PANELS.forEach((p,i)=>{p.id=p.id||("sec"+(i+1));});
 $("tbNav").innerHTML=PANELS.map((p,i)=>"<a href='#"+p.id+"' data-i='"+i+"'>"+(NAV[i]||p.querySelector("h2").textContent)+"</a>").join("");
 function updateNav(){
