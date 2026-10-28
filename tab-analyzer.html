@@ -65,6 +65,13 @@ input[type=number]{background:var(--panel2);border:1px solid var(--line);color:v
 .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line);margin:8px 0 10px}
 .tabs button{border-radius:8px 8px 0 0;padding:6px 12px;font-size:13px}
 .tabs button.on{background:#2c4a86;border-color:#3d63b0}
+.scChart{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:8px}
+.scBar{background:#1b1e27;border:1px solid #2a2e3b;border-radius:6px;padding:4px 8px 6px;cursor:pointer;min-width:0}
+.scBar:hover{border-color:#3d63b0}
+.scBar .n{font-size:10.5px;color:var(--sub)}
+.scBar .c{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabpre{font:12.5px/1.35 ui-monospace,Consolas,"Courier New",monospace;background:#14161d;border:1px solid #2a2e3b;border-radius:6px;padding:10px;overflow:auto;max-height:560px;white-space:pre;margin:8px 0 0}
+@media (max-width:700px){.scChart{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 14px;font-size:13px}
 .kv span{color:var(--sub);margin-right:6px}
 #tl canvas{user-select:none}
@@ -492,7 +499,7 @@ input[type=range]{accent-color:var(--acc)}
     <span id="edStatus" class="sub"></span>
   </div>
   <div class="note">処理した音は新しい解析結果として 1.〜8. に表示され、そのまま再生・比較できます（「元の音に戻す」で処理前に戻せます）。<b>タブ録音から作った音も保存・書き出しはできません。</b>自分のファイルと信号発生の音は、4. の「範囲を書き出し」で書き出せます。</div>
-  <div class="tabs" id="edTabs"><button data-tab="sep" class="on">分離</button><button data-tab="notes">音符・MIDI</button><button data-tab="fix">修復</button><button data-tab="pitch">ピッチ・時間</button></div>
+  <div class="tabs" id="edTabs"><button data-tab="sep" class="on">分離</button><button data-tab="notes">音符・MIDI</button><button data-tab="score">コード・TAB譜</button><button data-tab="fix">修復</button><button data-tab="pitch">ピッチ・時間</button></div>
 
   <div class="pane" data-pane="sep">
     <h3 style="margin-top:0">調波・打楽器</h3>
@@ -514,11 +521,34 @@ input[type=range]{accent-color:var(--acc)}
       <span class="sub">同時に鳴る音の上限</span><input type="number" id="ntPoly" value="6" min="1" max="10">
       <label class="sub">感度<select id="ntSens"><option value="-30,0.3">低（大きい音だけ）</option><option value="-36,0.15" selected>標準</option><option value="-44,0.08">高（小さい音も）</option></select></label>
       <label class="sub"><input type="checkbox" id="ntHarm" checked> 打楽器を除いてから検出</label>
+      <label class="sub">検出の方法<select id="ntMode"><option value="poly">和音を含む</option><option value="mono">単音（メロディー・ベース・リフ）</option></select></label>
       <button id="ntRun" class="primary">音符を検出</button></div>
     <div class="row" style="margin-top:4px"><button id="ntSynth" disabled>▶ 合成音で聴く</button>
-      <span class="sub">MIDI のテンポ</span><input type="number" id="ntBpm" value="120" min="20" max="300"><span class="sub">BPM</span><button id="ntMidi" disabled>MIDI を保存</button><span id="ntInfo" class="sub"></span></div>
+      <label class="sub">MIDI の時間<select id="ntGrid"><option value="4">拍に合わせ、16 分音符に揃える</option><option value="2">拍に合わせ、8 分音符に揃える</option><option value="3">拍に合わせ、3 連符に揃える</option><option value="0">拍に合わせる（揃えない）</option><option value="-1">秒のまま（一定のテンポ）</option></select></label>
+      <span class="sub">テンポ</span><input type="number" id="ntBpm" value="120" min="20" max="300" title="「秒のまま」のときの MIDI のテンポ"><span class="sub">BPM</span><button id="ntMidi" disabled>MIDI を保存</button><span id="ntInfo" class="sub"></span></div>
     <canvas id="cvNotes" style="margin-top:8px;cursor:pointer"></canvas>
-    <div class="legend">倍音の強さの和でピッチの強さを求め、強い音から順に倍音を差し引いて、同時に鳴っている音を探します。ピアノロールをクリックすると、その位置から元の音を再生します。打楽器・ノイズの多い曲や、オクターブで重なった音、低すぎる音は取りこぼしや誤検出が出ます（目安としてお使いください）。MIDI は一定テンポで書き出します（テンポには 2. の BPM 推定値が入ります）。</div>
+    <div class="legend">倍音の強さの和でピッチの強さを求め、強い音から順に倍音を差し引いて、同時に鳴っている音を探します。ピアノロールをクリックすると、その位置から元の音を再生します。打楽器・ノイズの多い曲や、オクターブで重なった音、低すぎる音は取りこぼしや誤検出が出ます（目安としてお使いください）。「単音」は、立ち上がりごとに新しく鳴り始めた音を倍音の和で求め、YIN の基本周波数でオクターブを確かめます。前の音が鳴り残っていても拾えるので、メロディー・ベース・ギターのリフは「単音」の方が正確です。MIDI は拍を追跡して、拍ごとのテンポ（揺れも含む）と拍子（「コード・TAB譜」の拍子）を書き、音符を拍に合わせます。「秒のまま」は一定のテンポで、時間をそのまま書きます。</div>
+  </div>
+
+  <div class="pane" data-pane="score" hidden>
+    <h3 style="margin-top:0">コード譜</h3>
+    <div class="row"><label class="sub">拍子<select id="scMeter"><option value="4">4/4</option><option value="3">3/4</option></select></label>
+      <label class="sub">BPM<input type="number" id="scBpm" placeholder="自動" min="40" max="240" step="0.1" style="width:72px" title="空欄なら自動。倍・半分に取られたときなどに入れてください"></label>
+      <label class="sub">コードの種類<select id="scVocab"><option value="full">標準（7th・sus4・dim など）</option><option value="simple">メジャー・マイナーだけ（安定）</option></select></label>
+      <button id="scRun" class="primary">拍とコードを検出</button><button id="scSave" disabled>コード譜を保存</button><span id="scInfo" class="sub"></span></div>
+    <div id="scChart" class="scChart"></div>
+    <div id="scShapes" class="sub" style="margin-top:6px"></div>
+    <h3>TAB 譜</h3>
+    <div class="row"><label class="sub">楽器<select id="tabInst"></select></label>
+      <span class="sub">カポ</span><input type="number" id="tabCapo" value="0" min="0" max="12" style="width:52px">
+      <span class="sub">最高フレット</span><input type="number" id="tabMax" value="22" min="5" max="24" style="width:52px">
+      <label class="sub">音の検出<select id="tabMode"><option value="mono">単音（メロディー・ベース・リフ）</option><option value="poly">和音を含む</option></select></label></div>
+    <div class="row" style="margin-top:4px"><label class="sub">細かさ<select id="tabGrid"><option value="4">16 分音符</option><option value="2">8 分音符</option><option value="3">3 連符</option></select></label>
+      <label class="sub">1 行の小節<select id="tabBars"><option>2</option><option selected>3</option><option>4</option></select></label>
+      <label class="sub"><input type="checkbox" id="tabChords" checked> コード名を入れる</label>
+      <button id="tabRun" class="primary">TAB 譜を作る</button><button id="tabSave" disabled>TAB 譜を保存</button><span id="tabInfo" class="sub"></span></div>
+    <pre id="tabOut" class="tabpre" hidden></pre>
+    <div class="legend">拍：立ち上がりの強さから動的計画法で拍の列を求め（Ellis 2007）、コードの変わり目と低音の立ち上がりから小節の頭を決めます。コード：拍ごとの 12 音の強さと低音を、倍音を含めたコードの型と比べ、隠れマルコフモデルでつなぎます。低音が根音以外の構成音なら「C/E」のように書きます。小節をクリックすると、その位置から再生します。TAB 譜：音符を拍の格子に合わせ、同時に鳴る音ごとに弦とフレットの候補を出し、指の広がりと手の移動が小さくなる組み合わせを選びます（弾けない音は省き、その数を表示します）。押さえ方は、標準チューニングの定番の形か、構成音と最低音から探した形です。コード譜・TAB 譜・MIDI は音の書き起こし（文字・音符のデータ）なので、タブ録音からも保存できます。いずれも自動推定です。テンションの多いコード、転調、テンポが大きく揺れる曲、打楽器や歌の大きい曲では誤りが増えます。</div>
   </div>
 
   <div class="pane" data-pane="fix" hidden>
@@ -2426,9 +2456,12 @@ function midiFile(notes,bpm){
   return Uint8Array.from(head.concat(d));
 }
 function notesJob(d,prog){
-  let x=d.x;
+  let x=d.x,bt=null;const o=d.o||{};
+  if(d.beats&&x.length>=d.fs*3){try{bt=beatsJob(x,d.fs,{bpm:o.bpm});}catch(e){bt=null;}}
+  const att=r=>{if(bt&&bt.beats.length>=3){r.beats=Float64Array.from(bt.beats);r.bpmBeats=bt.bpm;r.phase=downbeatPhase(bt.lowAt,null,o.meter||4);}return r;};
+  if(o.mode==="mono"){const key=detectKey(avgSpectrum(x,d.fs));return att(monoNotes(x,d.fs,{lo:o.lo,hi:o.hi,tune:key.cents/100},prog));}
   if(d.harm){const N=sepN(d.fs,2048),h=N/4;x=chunked([x],N+h*10.5,h,seg=>hpssSeg(seg,d.fs,{out:"harm"}),prog,"打楽器の除去")[0];}
-  return detectNotes(x,d.fs,d.o,prog);
+  return att(detectNotes(x,d.fs,d.o,prog));
 }
 // 10. の処理の振り分け。o.diff なら「取り除いた音」（元の音 − 処理後）を返す
 function editProcess(d,prog){
@@ -2449,6 +2482,377 @@ function editProcess(d,prog){
   else throw new Error("unknown op "+op);
   if(o.diff&&out[0].length===chs[0].length)out=out.map((y,c)=>{const z=new Float32Array(y.length);for(let i=0;i<y.length;i++)z[i]=chs[c][i]-y[i];return z;});
   return Object.assign({chs:out},extra);
+}
+/* ---- 譜面：拍・コード・TAB 譜 ---- */
+// 立ち上がりの強さ（全帯域と 200 Hz 以下）。音量に左右されないよう、全体の RMS で正規化してから対数フラックスをとる
+function onsetEnv(mono,fs,fmax){
+  const N=sepN(fs,2048),hop=N/4,bh=fs/N,w=hannP(N),L=mono.length,nF=Math.max(0,Math.floor((L-N)/hop)+1);
+  let e=0;for(let i=0;i<L;i++)e+=mono[i]*mono[i];const g=0.1/(Math.sqrt(e/Math.max(1,L))||1);
+  const kmax=Math.min(N/2-1,Math.floor((fmax||8000)/bh)),klo=Math.max(2,Math.round(200/bh));
+  const all=new Float32Array(nF),low=new Float32Array(nF),prev=new Float64Array(kmax+1),re=new Float64Array(N),im=new Float64Array(N);
+  for(let t=0;t<nF;t++){
+    const s=t*hop;for(let i=0;i<N;i++){re[i]=mono[s+i]*w[i]*g;im[i]=0;}fft(re,im);
+    let a=0,b=0;
+    for(let k=1;k<=kmax;k++){const v=Math.log1p(1000*Math.hypot(re[k],im[k])/N);if(t>0&&v>prev[k]){a+=v-prev[k];if(k<=klo)b+=v-prev[k];}prev[k]=v;}
+    all[t]=a;low[t]=b;
+  }
+  // 1 秒の移動平均を引いて正の部分だけ残し、標準偏差で割る（Ellis 2007）
+  const norm=x=>{const n=x.length,r=Math.max(1,Math.round(0.5*fs/hop)),c=new Float64Array(n+1);for(let i=0;i<n;i++)c[i+1]=c[i]+x[i];
+    const y=new Float32Array(n);let s2=0;for(let i=0;i<n;i++){const a=Math.max(0,i-r),b=Math.min(n,i+r+1);y[i]=Math.max(0,x[i]-(c[b]-c[a])/(b-a));s2+=y[i]*y[i];}
+    const sd=Math.sqrt(s2/Math.max(1,n))||1;for(let i=0;i<n;i++)y[i]/=sd;return y;};
+  return {env:norm(all),low:norm(low),fps:fs/hop,t0:N/2/fs};
+}
+// 拍の追跡（Ellis 2007 の動的計画法）：立ち上がりの強さの和と、拍の間隔がテンポからずれる罰を合わせて最良の拍の列を選ぶ
+function beatTrack(env,fps,bpm,tight){
+  const n=env.length,tau=60*fps/bpm,lo=Math.max(1,Math.round(tau/2)),hi=Math.round(tau*2),D=new Float64Array(n),P=new Int32Array(n).fill(-1);tight=tight||100;
+  const pen=new Float64Array(hi+1);for(let d=lo;d<=hi;d++)pen[d]=tight*Math.log(d/tau)**2;
+  for(let t=0;t<n;t++){
+    let best=0,bp=-1;
+    for(let d=lo;d<=hi&&d<=t;d++){const v=D[t-d]-pen[d];if(v>best){best=v;bp=t-d;}}
+    D[t]=env[t]+best;P[t]=bp;
+  }
+  // 終わりの 1 拍ぶんの中で最良の点から逆にたどる
+  let e=Math.max(0,n-Math.round(tau)),bt=e;for(let t=e;t<n;t++)if(D[t]>D[bt])bt=t;
+  const b=[];for(let t=bt;t>=0;t=P[t])b.push(t);b.reverse();
+  // 立ち上がりの手前（無音）の拍を除く
+  let s=0;while(s<b.length-2&&env[b[s]]<0.2&&env[b[s+1]]<0.2)s++;
+  const r=b.slice(s);
+  // 最初・最後の拍の外側に、1 拍ぶん離れた立ち上がりがあれば拍を足す（動的計画法は両端の拍を落としやすい）
+  const near=c=>{let bi=-1,bv=0.5;for(let j=Math.max(0,Math.round(c-tau*0.12));j<=Math.min(n-1,Math.round(c+tau*0.12));j++)if(env[j]>bv){bv=env[j];bi=j;}return bi;};
+  while(r.length>1){const c=near(r[0]-(r[1]-r[0]));if(c<0||c>=r[0])break;r.unshift(c);}
+  while(r.length>1){const k=r.length,c=near(r[k-1]+(r[k-1]-r[k-2]));if(c<=r[k-1])break;r.push(c);}
+  return r;
+}
+// 拍の位置（小数）。範囲の外は最初・最後の拍の間隔で延ばす
+function beatPos(beats,t){
+  const n=beats.length;if(n<2)return (t-(n?beats[0]:0))*2;
+  if(t<=beats[0])return (t-beats[0])/(beats[1]-beats[0]);
+  if(t>=beats[n-1])return n-1+(t-beats[n-1])/(beats[n-1]-beats[n-2]);
+  let a=0,b=n-1;while(b-a>1){const m=(a+b)>>1;if(beats[m]<=t)a=m;else b=m;}
+  return a+(t-beats[a])/(beats[a+1]-beats[a]);
+}
+function beatTime(beats,p){
+  const n=beats.length;if(n<2)return (n?beats[0]:0)+p*0.5;
+  if(p<=0)return beats[0]+p*(beats[1]-beats[0]);
+  if(p>=n-1)return beats[n-1]+(p-n+1)*(beats[n-1]-beats[n-2]);
+  const i=Math.floor(p);return beats[i]+(p-i)*(beats[i+1]-beats[i]);
+}
+function beatsJob(x,fs,o){
+  const on=onsetEnv(x,fs);if(on.env.length<on.fps*2)throw new Error("拍を調べるには 2 秒以上の音声が必要です");
+  const est=estimateBpm(on.env,on.fps),bpm=o.bpm>0?o.bpm:est?est.bpm:120;
+  const bf=beatTrack(on.env,on.fps,bpm,o.tight),beats=bf.map(t=>t/on.fps+on.t0);
+  // 音声の先頭ちょうどの立ち上がりは検出できない（前のフレームがない）ので、1 拍前が先頭付近で音が鳴っていれば拍を足す
+  if(beats.length>1){const p=beats[1]-beats[0],t=beats[0]-p;if(t>-0.06&&t<0.06){const rm=(a,b)=>{let v=0;const s0=Math.max(0,Math.round(a*fs)),e=Math.min(x.length,Math.round(b*fs));for(let i=s0;i<e;i++)v+=x[i]*x[i];return Math.sqrt(v/Math.max(1,e-s0));};
+    if(rm(Math.max(0,t),Math.max(0,t)+0.1)>0.3*rm(0,x.length/fs)){beats.unshift(Math.max(0,t));bf.unshift(Math.max(0,Math.round((Math.max(0,t)-on.t0)*on.fps)));}}}
+  // 低域の立ち上がり（拍の位置の前後 30 ms の最大）
+  const r=Math.round(0.03*on.fps),lowAt=bf.map(t=>{let m=0;for(let j=Math.max(0,t-r);j<=Math.min(on.low.length-1,t+r);j++)m=Math.max(m,on.low[j]);return m;});
+  let mb=0;if(beats.length>1)mb=60*(beats.length-1)/(beats[beats.length-1]-beats[0]);
+  return {bpm:mb||bpm,bpmEst:est?est.bpm:null,beats,lowAt};
+}
+// 小節の頭：コードが変わる拍と低域の立ち上がりが強い拍が、小節の頭に来るような位置を選ぶ
+function downbeatPhase(lowAt,change,meter){
+  const z=a=>{const n=a.length;if(!n)return a;let m=0;for(const v of a)m+=v;m/=n;let s=0;for(const v of a)s+=(v-m)**2;s=Math.sqrt(s/n)||1;return a.map(v=>(v-m)/s);};
+  const L=z(lowAt),C=change?z(change):null;let best=0,bv=-Infinity;
+  for(let p=0;p<meter;p++){let s=0,c=0;for(let i=p;i<L.length;i+=meter){s+=0.6*L[i]+(C?C[i]:0);c++;}if(c&&s/c>bv){bv=s/c;best=p;}}
+  return best;
+}
+
+// 時刻 t（省略時は最初の拍）を含む小節の頭の拍の位置（負になることもある）
+function barOrigin(beats,phase,meter,t){const first=t==null?0:beatPos(beats,t);let o=phase;while(o>first+0.25)o-=meter;while(o+meter<=first-0.25)o+=meter;return o;}
+// 半音ごとのスペクトル（C1〜C8）。低い音は長い窓で周波数を細かく、高い音は短い窓で。周りの平均を引いて打楽器などの広い成分を除く
+const SEMI_LO=24,SEMI_HI=108;
+function semiSpec(mono,fs,tune,prog){
+  const NL=sepN(fs,16384),NH=sepN(fs,8192),hop=NH/4,NP=SEMI_HI-SEMI_LO+1,L=mono.length;
+  const nF=Math.max(0,Math.floor((L-NH)/hop)+1);
+  const wL=hannP(NL),wH=hannP(NH),reL=new Float64Array(NL),imL=new Float64Array(NL),reH=new Float64Array(NH),imH=new Float64Array(NH);
+  const X=new Float32Array(nF*NP),mL=new Float64Array(NL/2+1),mH=new Float64Array(NH/2+1),split=55-SEMI_LO;
+  // スペクトルの山（放物線補間で周波数と高さを精密化）を一番近い半音に入れる。窓の山の裾が隣の半音に漏れない
+  const pk=(m,N,Y,qlo,qhi)=>{const bh=fs/N;for(let k=2;k<m.length-2;k++){const v=m[k];if(!(v>m[k-1]&&v>=m[k+1]))continue;
+    const a=Math.log(m[k-1]+1e-12),b=Math.log(v),c=Math.log(m[k+1]+1e-12),den=a-2*b+c,d=den<0?Math.max(-0.5,Math.min(0.5,0.5*(a-c)/den)):0;
+    const p=69+12*Math.log2((k+d)*bh/440)-tune,q=Math.round(p)-SEMI_LO;if(q<qlo||q>qhi)continue;const h=Math.exp(b-0.25*(a-c)*d);if(h>Y[q])Y[q]=h;}};
+  let e=0;for(let i=0;i<L;i++)e+=mono[i]*mono[i];const g=0.1/(Math.sqrt(e/Math.max(1,L))||1);
+  const Y=new Float64Array(NP);
+  for(let t=0;t<nF;t++){
+    if(prog&&t%300===0)prog("音の高さの分析 "+Math.round(100*t/Math.max(1,nF))+"%");
+    const c=t*hop+NH/2;
+    for(let i=0;i<NH;i++){reH[i]=mono[c-NH/2+i]*wH[i]*g;imH[i]=0;}fft(reH,imH);for(let k=0;k<=NH/2;k++)mH[k]=Math.hypot(reH[k],imH[k])*4/NH;
+    for(let i=0;i<NL;i++){const j=c-NL/2+i;reL[i]=j>=0&&j<L?mono[j]*wL[i]*g:0;imL[i]=0;}fft(reL,imL);for(let k=0;k<=NL/2;k++)mL[k]=Math.hypot(reL[k],imL[k])*4/NL;
+    Y.fill(0);pk(mL,NL,Y,0,split-1);pk(mH,NH,Y,split,NP-1);for(let q=0;q<NP;q++)Y[q]=Math.sqrt(Y[q]);
+    for(let q=0;q<NP;q++){let s=0,n=0;for(let d=-12;d<=12;d++){const j=q+d;if(j>=0&&j<NP){s+=Y[j];n++;}}X[t*NP+q]=Math.max(0,Y[q]-s/n);}
+  }
+  return {X,NP,nF,hop:hop/fs,t0:NH/2/fs};
+}
+// コードの型 [名前, 構成音, 珍しさ]。珍しい型ほど、はっきりした根拠がないと選ばない
+const PRIOR_W=[0,1,6,10];
+const CHORD_TYPES=[["",[0,4,7],0],["m",[0,3,7],0],["7",[0,4,7,10],1],["M7",[0,4,7,11],1],["m7",[0,3,7,10],1],["sus4",[0,5,7],2],["dim",[0,3,6],2],["m7-5",[0,3,6,10],2],["aug",[0,4,8],3]];
+const NOTE_FLAT=["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+function flatKey(key){return key?(key.minor?[2,7,0,5,10,3]:[5,10,3,8,1,6]).includes(key.tonic):false;}
+function chordName(c,flat){if(c.root<0)return "N.C.";const nm=flat?NOTE_FLAT:NOTE;return nm[c.root]+c.type+(c.bass>=0&&c.bass!==c.root?"/"+nm[c.bass]:"");}
+// コードの推定：拍ごとの 12 音（中高域）と低音を、倍音を含めたコードの型と比べ、隠れマルコフモデル（ビタビ）でつなぐ
+function chordTrack(sp,beats,o){
+  const {X,NP,nF,hop,t0}=sp,nb=beats.length;if(nb<2)return [];
+  const types=o.vocab==="simple"?CHORD_TYPES.slice(0,2):CHORD_TYPES;
+  // 拍ごとに、間のフレームの中央値（打楽器や経過音に強い）
+  const T=new Float64Array((nb-1)*12),B=new Float64Array((nb-1)*12),E=new Float64Array(nb-1),col=[],med=new Float64Array(NP+40);
+  for(let i=0;i<nb-1;i++){
+    const f0=Math.max(0,Math.ceil((beats[i]-t0)/hop)),f1=Math.min(nF-1,Math.floor((beats[i+1]-t0)/hop));
+    const fr=[];for(let f=f0;f<=f1;f++)fr.push(f);if(!fr.length)fr.push(Math.max(0,Math.min(nF-1,Math.round((beats[i]-t0)/hop))));
+    for(let q=0;q<NP;q++){col.length=0;for(const f of fr)col.push(X[f*NP+q]);col.sort((a,b)=>a-b);med[q]=col.length%2?col[col.length>>1]:(col[col.length/2-1]+col[col.length/2])/2;}
+    // 低音（E1〜E3）：倍音（1・2・3・4 倍）の和で一番強い音
+    let bm=0,bp=-1;for(let p=28;p<=52;p++){const q=p-SEMI_LO,v=med[q]+0.5*med[q+12]+0.33*med[q+19]+0.25*med[q+24];if(v>bm){bm=v;bp=p;}B[i*12+p%12]=Math.max(B[i*12+p%12],v);}
+    // 中高域（C3〜C7）。メロディーに引っ張られないよう G4 より上は弱める。低音の 3・5・6・7 倍音にあたる高さ（5 度・長 3 度・短 7 度）は弱める（マイナーがメジャーに見えるのを防ぐ）
+    const dim=new Set(bp>0&&bm>0?[19,28,31,34].map(d=>bp+d):[]);
+    for(let q=0;q<NP;q++){const p=q+SEMI_LO;if(p<48||p>96)continue;const w=(p<53?(p-47)/6:p>67?Math.max(0.15,1-(p-67)/16):1)*(dim.has(p)?0.25:1);T[i*12+p%12]+=w*med[q];E[i]+=w*med[q];}
+  }
+  // 倍音を含めたテンプレート（各構成音に 1・1/2・1/3・1/4 倍の 4 倍音まで）
+  const tpl=[],H=[[0,1],[0,0.5],[7,0.33],[0,0.25]];
+  for(let r=0;r<12;r++)for(let ti=0;ti<types.length;ti++){const v=new Float64Array(12);for(const iv of types[ti][1])for(const [d,a] of H)v[(r+iv+d)%12]+=a;let q=0;for(let k=0;k<12;k++)q+=v[k]*v[k];q=Math.sqrt(q);for(let k=0;k<12;k++)v[k]/=q;tpl.push({root:r,type:types[ti][0],tones:types[ti][1].map(x=>(r+x)%12),v,prior:types[ti][2]});}
+  const K=tpl.length+1,nS=nb-1,em=new Float64Array(nS*K);
+  const eSort=Array.from(E).filter(v=>v>0).sort((a,b)=>a-b),eRef=eSort.length?eSort[Math.floor(eSort.length*0.9)]:0;
+  const kap=o.kappa||14,kb=o.kbass==null?4:o.kbass,pc=o.complexPen==null?0.1:o.complexPen;
+  for(let i=0;i<nS;i++){
+    let q=0;for(let k=0;k<12;k++)q+=T[i*12+k]**2;q=Math.sqrt(q)||1;
+    let bmx=0;for(let k=0;k<12;k++)bmx=Math.max(bmx,B[i*12+k]);
+    for(let c=0;c<tpl.length;c++){const t=tpl[c];let d=0;for(let k=0;k<12;k++)d+=T[i*12+k]/q*t.v[k];let bt=B[i*12+t.root];for(const k of t.tones)bt=Math.max(bt,0.75*B[i*12+k]);em[i*K+c]=kap*d+(bmx>0?kb*bt/bmx:0)-pc*PRIOR_W[t.prior];}
+    // 無音・打楽器だけの拍は N.C.（コードなし）
+    em[i*K+K-1]=E[i]<0.02*eRef?kap+kb+5:kap*0.55;
+  }
+  if(o.debug)o.debug.push({T,B,E});
+  // ビタビ：同じコードが続くのを優先（変わるたびに罰）
+  const sw=o.switchPen==null?3.5:o.switchPen,D=new Float64Array(K),ND=new Float64Array(K),bk=new Int32Array(nS*K);
+  for(let c=0;c<K;c++)D[c]=em[c];
+  for(let i=1;i<nS;i++){
+    let bc=0;for(let c=1;c<K;c++)if(D[c]>D[bc])bc=c;
+    for(let c=0;c<K;c++){const st=D[c],ch=D[bc]-sw;if(st>=ch){ND[c]=st+em[i*K+c];bk[i*K+c]=c;}else{ND[c]=ch+em[i*K+c];bk[i*K+c]=bc;}}
+    D.set(ND);
+  }
+  let c=0;for(let k=1;k<K;k++)if(D[k]>D[c])c=k;
+  const path=new Int32Array(nS);for(let i=nS-1;i>=0;i--){path[i]=c;c=bk[i*K+c];}
+  // 同じコードの拍をまとめ、低音が根音以外の構成音ならオンコード（分数コード）にする
+  const seg=[];
+  for(let i=0;i<nS;i++){
+    if(seg.length&&seg[seg.length-1].k===path[i]){seg[seg.length-1].b1=i+1;continue;}
+    seg.push({k:path[i],b0:i,b1:i+1});
+  }
+  return seg.map(s=>{
+    if(s.k===K-1)return {b0:s.b0,b1:s.b1,root:-1,type:"",bass:-1,tones:[]};
+    const t=tpl[s.k],bs=new Float64Array(12);for(let i=s.b0;i<s.b1;i++)for(let k=0;k<12;k++)bs[k]+=B[i*12+k];
+    let bb=t.root;for(const k of t.tones)if(bs[k]>bs[bb])bb=k;
+    const bass=bs[bb]>1.25*bs[t.root]?bb:t.root;
+    return {b0:s.b0,b1:s.b1,root:t.root,type:t.type,bass,tones:t.tones};
+  });
+}
+// コード譜：拍・コード・小節の頭をまとめる
+function chordsJob(d,prog){
+  const {x,fs}=d,o=d.o||{};prog=prog||(()=>{});
+  prog("拍の検出");const bt=beatsJob(x,fs,o);
+  if(bt.beats.length<3)throw new Error("拍が見つかりませんでした（打楽器のない曲は BPM を入れると安定します）");
+  prog("キー・チューニング");const key=detectKey(avgSpectrum(x,fs));
+  const sp=semiSpec(x,fs,key.cents/100,prog);
+  prog("コードの推定");const chords=chordTrack(sp,bt.beats,o);
+  const change=bt.beats.map((_,i)=>chords.some(c=>c.b0===i&&i>0)?1:0);
+  const meter=o.meter||4,phase=downbeatPhase(bt.lowAt,change,meter);
+  return {bpm:bt.bpm,bpmEst:bt.bpmEst,beats:Float64Array.from(bt.beats),meter,phase,key:{name:key.best.name,tonic:key.best.tonic,minor:key.best.minor,cents:key.cents},chords};
+}
+
+// 単音の音符（メロディー・ベース向け）。立ち上がりごとに、直後と直前のスペクトルの差（新しく鳴り始めた成分）から倍音の和で音の高さを決める。
+// 前の音が鳴り残っていても新しい音を拾える。音がはっきり 1 つだけのときは YIN の結果でオクターブを確かめ、立ち上がりのない音の変わり目（スラー）も YIN で拾う
+function monoNotes(x,fs,o,prog){
+  const lo=o.lo||28,hi=o.hi||100,L=x.length;
+  const pt=pitchTrack(x,fs,o.fmin||440*Math.pow(2,(lo-70)/12),o.fmax||Math.min(2000,440*Math.pow(2,(hi-68)/12)),prog),hop=pt.hop,n=pt.f0.length,tc=i=>i*hop+0.02;
+  const q=new Int16Array(n).fill(-1);
+  for(let i=0;i<n;i++){if(!(pt.f0[i]>0))continue;const a=[];for(let d=-2;d<=2;d++){const v=pt.f0[i+d];if(v>0)a.push(v);}a.sort((p,r)=>p-r);const p=Math.round(69+12*Math.log2(a[a.length>>1]/440)-(o.tune||0));if(p>=lo&&p<=hi)q[i]=p;}
+  if(prog)prog("立ち上がりの検出");
+  // 立ち上がりは弱めのものまで拾い、新しい音の高さの根拠がないもの（打楽器など）は後で除く
+  const on=onsetEnv(x,fs,Math.min(5000,Math.max(1500,8*440*Math.pow(2,(hi-69)/12)))),pk=[];
+  for(let i=1;i<on.env.length-1;i++)if(on.env[i]>(o.onThr||0.8)&&on.env[i]>on.env[i-1]&&on.env[i]>=on.env[i+1]){const t=i/on.fps+on.t0;if(pk.length&&t-pk[pk.length-1]<0.05){if(on.env[i]>on.env[Math.round((pk[pk.length-1]-on.t0)*on.fps)])pk[pk.length-1]=t;}else pk.push(t);}
+  // 窓の長さ別の FFT と、音ごと・倍音ごとの帯域
+  const spec=(c,N)=>{const w=hannP(N),re=new Float64Array(N),im=new Float64Array(N),s0=Math.round(c*fs)-N/2;for(let i=0;i<N;i++){const j=s0+i;re[i]=j>=0&&j<L?x[j]*w[i]:0;im[i]=0;}fft(re,im);const m=new Float64Array(N/2+1);for(let k=0;k<=N/2;k++)m[k]=Math.hypot(re[k],im[k]);return m;};
+  const bands={},bandOf=N=>{if(bands[N])return bands[N];const bh=fs/N,r=[];for(let p=lo;p<=hi;p++){const f0=440*Math.pow(2,(p-69+(o.tune||0))/12),hs=[];for(let h=1;h<=10&&h*f0<Math.min(fs/2,8000);h++){const f=h*f0;hs.push([Math.max(1,Math.min(Math.floor(f*Math.pow(2,-1/24)/bh),Math.round(f/bh)-1)),Math.min(N/2,Math.max(Math.ceil(f*Math.pow(2,1/24)/bh),Math.round(f/bh)+1)),1/Math.sqrt(h)]);}r.push(hs);}return bands[N]=r;};
+  // 倍音ごとの強さ hm[j][h−1] も返す（オクターブ下の誤りの判定に使う）
+  const sal=(D,N)=>{const B=bandOf(N),out=new Float64Array(B.length),hm=[];for(let j=0;j<B.length;j++){let v=0,m1=0,mx=0,h=0;const a=[];for(const [k0,k1,g] of B[j]){let m=0;for(let k=k0;k<=k1;k++)if(D[k]>m)m=D[k];a.push(m);v+=g*m;if(h++===0)m1=m;if(m>mx)mx=m;}hm.push(a);out[j]=v*Math.min(1,m1/(0.15*mx+1e-30));}return {S:out,hm};};
+  const yinAt=(a,b)=>{const c=new Map();let tot=0,v=0;for(let i=Math.max(0,Math.ceil((a-0.02)/hop));i<n&&tc(i)<b;i++){tot++;if(q[i]<0)continue;v++;c.set(q[i],(c.get(q[i])||0)+1);}let p=-1,pc=0;for(const [k,m] of c)if(m>pc){pc=m;p=k;}return {p,share:tot?pc/tot:0};};
+  const env=t=>{const s0=Math.max(0,Math.round(t*fs)),e=Math.min(L,s0+Math.round(0.02*fs));let v=0;for(let i=s0;i<e;i++)v+=x[i]*x[i];return Math.sqrt(v/Math.max(1,e-s0));};
+  // 同じ高さの弾き直し：倍音（1〜4 倍）の強さが立ち上がりの前後 30 ms で増えているか
+  const harmE=(p,a,b)=>{const f0=440*Math.pow(2,(p-69+(o.tune||0))/12),s0=Math.max(0,Math.round(a*fs)),e=Math.min(L,Math.round(b*fs));let tot=0;
+    for(let h=1;h<=4;h++){const w=2*Math.PI*h*f0/fs;let c=0,sn=0;for(let i=s0;i<e;i++){const hw=0.5-0.5*Math.cos(2*Math.PI*(i-s0)/(e-s0));c+=x[i]*hw*Math.cos(w*i);sn+=x[i]*hw*Math.sin(w*i);}tot+=Math.hypot(c,sn);}return tot;};
+  const raw=[],end=L/fs;
+  for(let k=0;k<pk.length;k++){
+    const t=pk[k],nx=k+1<pk.length?pk[k+1]:end,pv=k>0?pk[k-1]:-1,room=Math.min(nx-t-0.015,pv<0?1:t-pv-0.025,0.2);
+    let N=sepN(fs,8192);while(N>sepN(fs,1024)&&N/fs>room)N>>=1;
+    const A=spec(t+0.015+N/2/fs,N),Bf=spec(t-0.01-N/2/fs,N),D=new Float64Array(A.length);for(let i=0;i<A.length;i++)D[i]=Math.max(0,A[i]-Bf[i]);
+    const {S,hm}=sal(D,N);let bj=0;for(let j=1;j<S.length;j++)if(S[j]>S[bj])bj=j;
+    // 新しい成分が弱く、鳴っている音（直後のスペクトルで一番強い音）が前の音と同じなら、弾き直しかを確かめる
+    const SA=sal(A,N).S;let ja=0;for(let j=1;j<SA.length;j++)if(SA[j]>SA[ja])ja=j;
+    const last=raw[raw.length-1];
+    if(last&&!(S[bj]>=0.35*SA[ja])&&lo+ja===last.p&&t-last.t0<2){
+      const lw=Math.max(0.03,Math.min(0.06,(t-last.t0)/3));
+      if(harmE(last.p,t+0.005,t+0.005+lw)>1.5*harmE(last.p,t-0.005-lw,t-0.005)){last.t1=Math.min(last.t1,t);const a0=env(t+0.01);let t1=nx;for(let u=t+0.05;u<nx;u+=0.01)if(env(u)<0.1*a0){t1=u;break;}raw.push({p:last.p,t0:t,t1,s:SA[ja],r:a0,re:true});continue;}
+    }
+    if(!(S[bj]>0))continue;
+    // オクターブ下の誤り：奇数倍音（1・3・5・7 倍）が偶数倍音より十分弱く、1 オクターブ上にも強い候補があれば上へ
+    for(let it=0;it<3&&bj+12<S.length;it++){const a=hm[bj];let od=0,ev=0;for(let h=0;h<a.length;h++)(h%2===0?od+=a[h]:ev+=a[h]);if(od<0.35*ev&&S[bj+12]>=0.4*S[bj])bj+=12;else break;}
+    let p=lo+bj;const y=yinAt(t+0.03,Math.min(nx,t+0.15));
+    // 有力な候補が複数あり、YIN が安定してそのどれかを指すなら YIN に合わせる（YIN は音が重なるとオクターブ下に固定されやすいので、候補の中だけ）
+    if(y.p>=lo&&y.p<=hi&&y.share>=0.7&&y.p!==p&&S[y.p-lo]>=0.6*S[bj])p=y.p;
+    // 終わり：次の立ち上がりか、音量が立ち上がりの 1/10 を下回るまで
+    const a0=env(t+0.01);let t1=nx;for(let u=t+0.05;u<nx;u+=0.01)if(env(u)<0.1*a0){t1=u;break;}
+    raw.push({p,t0:t,t1,s:S[bj],r:a0});
+  }
+  // 打楽器などの立ち上がり（新しい音の高さの根拠が弱いもの）を除く
+  const ss=raw.map(r=>r.s).sort((a,b)=>a-b),sMed=ss.length?ss[ss.length>>1]:0;
+  let notes=raw.filter(r=>r.re||r.s>=0.12*sMed);
+  // 立ち上がりのない音の変わり目（スラー・ハンマリング）を YIN で
+  const extra=[];
+  for(let i=0;i<n;){if(q[i]<0){i++;continue;}let j=i;while(j+1<n&&q[j+1]===q[i])j++;
+    if(j-i+1>=6){const t=tc(i)-0.02,cur=notes.find(m=>m.t0<=t+0.03&&m.t1>t);if(cur&&cur.p!==q[i]&&!notes.some(m=>Math.abs(m.t0-t)<0.08)&&yinAt(cur.t0+0.03,Math.min(t,cur.t0+0.15)).p===cur.p)extra.push({p:q[i],t0:t,t1:Math.min(cur.t1,tc(j)+0.02),r:cur.r});}
+    i=j+1;}
+  for(const e of extra){const cur=notes.find(m=>m.t0<e.t0&&m.t1>e.t0);if(cur)cur.t1=e.t0;notes.push(e);}
+  notes.sort((a,b)=>a.t0-b.t0);
+  let gmax=1e-9;for(const r of notes)gmax=Math.max(gmax,r.r);
+  return {notes:notes.map(r=>({p:r.p,t0:r.t0,t1:Math.max(r.t0+0.03,r.t1),v:Math.max(1,Math.min(127,Math.round(110+20*Math.log10(r.r/gmax)*1.5)))}))};
+}
+// TAB 譜：同時の音ごとに弦とフレットの候補を出し、手の移動が少なくなる組み合わせをビタビで選ぶ
+function tabFinger(events,open,capo,maxFret,o){
+  o=o||{};const S=open.length,top=maxFret-capo,span=o.span||4,out=[];
+  const candOf=ps=>{
+    const res=[],cur=new Int8Array(S).fill(-1);
+    const rec=k=>{
+      if(res.length>400)return;
+      if(k===ps.length){let mn=99,mx=-1,op=0;for(let s=0;s<S;s++)if(cur[s]>0){mn=Math.min(mn,cur[s]);mx=Math.max(mx,cur[s]);}else if(cur[s]===0)op++;
+        const sp=mx<0?0:mx-mn;if(sp>span)return;res.push({f:Array.from(cur),pos:mx<0?null:(mn+mx)/2,sp,op,hi:mx<0?0:mx});return;}
+      for(let s=0;s<S;s++){if(cur[s]>=0)continue;const f=ps[k]-open[s]-capo;if(f<0||f>top)continue;cur[s]=f;rec(k+1);cur[s]=-1;}
+    };
+    rec(0);return res;
+  };
+  const stat=c=>0.45*c.sp+0.06*Math.max(0,(c.pos||0)-4)-0.12*c.op+0.03*c.hi;
+  const ev=[];
+  for(const e of events){
+    let ps=[...new Set(e.ps)].sort((a,b)=>b-a),drop=[];
+    ps=ps.filter(p=>{const ok=open.some(op=>p-op-capo>=0&&p-op-capo<=top);if(!ok)drop.push(p);return ok;});
+    while(ps.length>S)drop.push(ps.splice(Math.floor(ps.length/2),1)[0]);
+    let cs=ps.length?candOf(ps):[];
+    // 弾けない組み合わせは、音を 1 つずつ減らして弾ける形を探す（真ん中の音から）
+    while(ps.length>1&&!cs.length){let bi=-1,bc=null;for(let i=0;i<ps.length;i++){const t=ps.filter((_,j)=>j!==i),c=candOf(t);if(c.length&&(bi<0||Math.min(...c.map(stat))<Math.min(...bc.map(stat)))){bi=i;bc=c;}}
+      if(bi<0){drop.push(ps.pop());cs=candOf(ps);}else{drop.push(ps[bi]);ps.splice(bi,1);cs=bc;}}
+    cs.sort((a,b)=>stat(a)-stat(b));ev.push({e,ps,drop,cs:cs.slice(0,80)});
+  }
+  const idx=ev.map((x,i)=>i).filter(i=>ev[i].cs.length);
+  const tr=(a,b,gap)=>{if(a.pos==null||b.pos==null)return 0;const d=Math.abs(a.pos-b.pos);return (0.35*d+(d>4?0.6*(d-4):0))*(gap>0.6?0.4:1);};
+  let prev=null,D=null;const back=[];
+  for(const i of idx){
+    const cs=ev[i].cs,nd=new Float64Array(cs.length),bp=new Int32Array(cs.length);
+    for(let c=0;c<cs.length;c++){
+      const st=stat(cs[c]);
+      if(!prev){nd[c]=st;bp[c]=-1;continue;}
+      let best=Infinity,bj=0;const gap=ev[i].e.t-ev[prev.i].e.t;
+      for(let j=0;j<prev.cs.length;j++){const v=D[j]+tr(prev.cs[j],cs[c],gap);if(v<best){best=v;bj=j;}}
+      nd[c]=best+st;bp[c]=bj;
+    }
+    back.push(bp);D=nd;prev={i,cs};
+  }
+  const pick=new Map();
+  if(idx.length){let c=0;for(let k=1;k<D.length;k++)if(D[k]<D[c])c=k;for(let k=idx.length-1;k>=0;k--){pick.set(idx[k],c);c=back[k][c];}}
+  for(let i=0;i<ev.length;i++){const c=pick.has(i)?ev[i].cs[pick.get(i)]:null;out.push({slot:ev[i].e.slot,t:ev[i].e.t,frets:c?c.f:new Array(S).fill(-1),drop:ev[i].drop});}
+  return out;
+}
+// ギターのコードの押さえ方：構成音だけを鳴らし、最低音が低音（根音・オンコードの音）になる形のうち、鳴る弦が多く、低い位置で、指の届くものを選ぶ
+// 標準チューニングの定番の形（低い弦から。-1 は鳴らさない）
+const OPEN_SHAPES={"C":[-1,3,2,0,1,0],"D":[-1,-1,0,2,3,2],"E":[0,2,2,1,0,0],"G":[3,2,0,0,0,3],"A":[-1,0,2,2,2,0],"Am":[-1,0,2,2,1,0],"Dm":[-1,-1,0,2,3,1],"Em":[0,2,2,0,0,0],
+  "C7":[-1,3,2,3,1,0],"D7":[-1,-1,0,2,1,2],"E7":[0,2,0,1,0,0],"G7":[3,2,0,0,0,1],"A7":[-1,0,2,0,2,0],"B7":[-1,2,1,2,0,2],"Am7":[-1,0,2,0,1,0],"Dm7":[-1,-1,0,2,1,1],"Em7":[0,2,0,0,0,0],
+  "CM7":[-1,3,2,0,0,0],"DM7":[-1,-1,0,2,2,2],"FM7":[-1,-1,3,2,1,0],"GM7":[3,2,0,0,0,2],"AM7":[-1,0,2,1,2,0],"EM7":[0,2,1,1,0,0],"Asus4":[-1,0,2,2,3,0],"Dsus4":[-1,-1,0,2,3,3],"Esus4":[0,2,2,2,0,0],
+  "C/E":[0,3,2,0,1,0],"G/B":[-1,2,0,0,0,3],"D/F#":[2,-1,0,2,3,2],"C/G":[3,3,2,0,1,0],"Am/G":[3,0,2,2,1,0],"Am/E":[0,0,2,2,1,0]};
+function chordShape(c,open,capo,maxFret){
+  if(c.root<0||open.length<5)return null;
+  // 標準チューニングなら定番の形（カポのときは、カポからの相対で同じ形）
+  if(open.join()==="40,45,50,55,59,64"){const r=(c.root-capo+120)%12,b=(c.bass-capo+120)%12,nm=NOTE[r]+c.type+(b!==r?"/"+NOTE[b]:"");if(OPEN_SHAPES[nm])return OPEN_SHAPES[nm].slice();}
+  const S=open.length,tones=new Set(c.tones),need=c.tones.filter((t,i)=>!(c.tones.length>=4&&i===2)),top=Math.min(12,maxFret-capo);let best=null,bs=Infinity;
+  const cur=new Int8Array(S);
+  for(let w=1;w<=Math.max(1,top-3);w++){
+    const opts=[];for(let s=0;s<S;s++){const a=[-1];for(const f of [0,w,w+1,w+2,w+3]){if(f>top)continue;if(tones.has((open[s]+capo+f)%12)&&!a.includes(f))a.push(f);}opts.push(a);}
+    const rec=s=>{
+      if(s<S){for(const f of opts[s]){cur[s]=f;rec(s+1);}return;}
+      let lo=-1;for(let k=0;k<S;k++)if(cur[k]>=0){lo=k;break;}if(lo<0||(open[lo]+capo+cur[lo])%12!==c.bass)return;
+      let nS=0,op=0,mn=99,mx=0,inner=0;const have=new Set();
+      for(let k=lo;k<S;k++){if(cur[k]<0){inner++;continue;}nS++;have.add((open[k]+capo+cur[k])%12);if(cur[k]===0)op++;else{mn=Math.min(mn,cur[k]);mx=Math.max(mx,cur[k]);}}
+      if(nS<4||inner>1)return;for(const t of need)if(!have.has(t))return;
+      // 指の数：一番低いフレットが 2 本以上で、そこから高い弦がすべてそのフレット以上ならセーハ（1 本の指）
+      let fing=0;if(mx>0){let atMin=0,first=-1;for(let k=lo;k<S;k++)if(cur[k]===mn){atMin++;if(first<0)first=k;}
+        let barre=atMin>=2;if(barre)for(let k=first;k<S;k++)if(!(cur[k]>=mn)){barre=false;break;}
+        for(let k=lo;k<S;k++)if(cur[k]>0&&!(barre&&cur[k]===mn))fing++;if(barre)fing++;}
+      if(fing>4)return;
+      // 開放弦は 1〜2 フレットの位置で押さえるときだけ有利（高い位置では手が届きにくい）
+      const sc=-nS+0.35*(mx>0?mn:0)+0.6*(mx>0?mx-mn:0)+(mn>=2&&mx>0?0.3:-0.2)*op+1.5*inner;
+      if(sc<bs){bs=sc;best=Array.from(cur);}
+    };
+    rec(0);
+  }
+  return best;
+}
+// TAB 譜のテキスト。1 拍を grid 個に分け、小節線とコード名をつける
+function tabText(fing,open,o){
+  const S=open.length,g=o.grid||4,meter=o.meter||4,spb=g*meter,bpl=o.barsPerLine||3,names=open.map((p,i)=>{const n=NOTE[p%12];return i===S-1&&S>=6?n.toLowerCase():n;});
+  const w=Math.max(...names.map(n=>n.length));
+  const slots=new Map();for(const f of fing){if(!slots.has(f.slot))slots.set(f.slot,new Array(S).fill(-1));const a=slots.get(f.slot);f.frets.forEach((v,s)=>{if(v>=0)a[s]=v;});}
+  const maxSlot=fing.length?Math.max(...fing.map(f=>f.slot)):0,nBars=Math.max(1,Math.floor(maxSlot/spb)+1),chordAt=new Map();
+  for(const c of o.chords||[])chordAt.set(c.slot,c.name);
+  const lines=[];
+  for(let b0=0;b0<nBars;b0+=bpl){
+    const rows=names.map(n=>n.padEnd(w)+"|").reverse(),crow=[" ".repeat(w+1)];let len=0;const cps=[];
+    for(let b=b0;b<Math.min(nBars,b0+bpl);b++){
+      for(let k=0;k<spb;k++){
+        const sl=b*spb+k,a=slots.get(sl),cw=a?Math.max(1,...a.map(v=>v>=0?String(v).length:1)):1;
+        if(chordAt.has(sl))cps.push([len,chordAt.get(sl)]);
+        for(let s=0;s<S;s++){const v=a?a[s]:-1,str=v>=0?String(v):"";rows[S-1-s]+=(str+"-".repeat(cw-str.length))+"-";}
+        len+=cw+1;
+      }
+      for(let s=0;s<S;s++)rows[s]+="|";len++;
+    }
+    let cr="";for(const [p,nm] of cps){if(cr.length>p)cr+=" ";cr=cr.padEnd(p)+nm;}
+    if(cps.length)lines.push(crow[0]+cr);
+    lines.push(...rows,"");
+  }
+  return lines.join("\n");
+}
+// TAB 譜：拍とコードを求め、音符を拍の格子に合わせてから押さえ方を決める
+function tabJob(d,prog){
+  const {x,fs}=d,o=d.o||{};prog=prog||(()=>{});
+  const sc=d.chords||chordsJob({x,fs,o},prog);
+  const open=o.open,capo=o.capo||0,lo=Math.min(...open)+capo,hi=Math.max(...open)+capo+(o.maxFret||22)-capo;
+  let notes;
+  if(o.mode==="mono"){prog("単音の検出");notes=monoNotes(x,fs,{lo,hi,tune:sc.key.cents/100},prog).notes;}
+  else{let y=x;if(o.harm!==false){const N=sepN(fs,2048),h=N/4;y=chunked([x],N+h*10.5,h,seg=>hpssSeg(seg,fs,{out:"harm"}),prog,"打楽器の除去")[0];}
+    notes=detectNotes(y,fs,{lo:Math.max(21,lo),hi:Math.min(108,hi),maxPoly:Math.min(open.length,o.maxPoly||6),floorDb:o.floorDb==null?-36:o.floorDb,rel:o.rel||0.15},prog).notes;}
+  const g=o.grid||4,meter=sc.meter,beats=Array.from(sc.beats);
+  // 最初の音を含む小節の頭を 0 とする
+  const origin=barOrigin(beats,sc.phase,meter,notes.length?notes[0].t0:null);
+  const map=new Map();
+  for(const n of notes){const sl=Math.max(0,Math.round((beatPos(beats,n.t0)-origin)*g));if(!map.has(sl))map.set(sl,{slot:sl,t:n.t0,ps:[]});map.get(sl).ps.push(n.p);}
+  const events=[...map.values()].sort((a,b)=>a.slot-b.slot);
+  prog("押さえ方の決定");const fing=tabFinger(events,open,capo,o.maxFret||22);
+  const flat=flatKey(sc.key),chords=sc.chords.map(c=>({slot:Math.max(0,Math.round((c.b0-origin)*g)),name:chordName(c,flat)}));
+  const text=tabText(fing,open,{grid:g,meter,barsPerLine:o.barsPerLine||3,chords:o.withChords===false?[]:chords});
+  let dropped=0;for(const f of fing)dropped+=f.drop.length;
+  return {text,notes,fing,dropped,chords:sc,origin};
+}
+// 標準 MIDI ファイル。beats を渡すと、拍ごとのテンポ（テンポの揺れ）と拍子を書き、音符を拍に合わせる（grid>0 で 1 拍 grid 分割に揃える）
+function midiFileBeats(notes,beats,o){
+  const tpq=480,meter=o.meter||4,g=o.grid||0,origin=o.origin||0,ev=[];
+  const tk=t=>{const p=beatPos(beats,t)-origin;return Math.max(0,g>0?Math.round(p*g)*tpq/g:Math.round(p*tpq));};
+  for(const n of notes){const a=tk(n.t0);let b=tk(n.t1);if(b<=a)b=a+(g>0?tpq/g:1);ev.push([a,0x90,n.p,n.v],[b,0x80,n.p,0]);}
+  // テンポ：拍 i の位置（origin からの拍数 × 480）に、次の拍までの間隔を書く
+  const tm=[];const n=beats.length;
+  const per=i=>i<0?beats[1]-beats[0]:i>=n-1?beats[n-1]-beats[n-2]:beats[i+1]-beats[i];
+  const firstBeat=Math.ceil(origin);tm.push([0,per(Math.floor(origin))]);
+  for(let i=Math.max(0,firstBeat);i<n-1;i++)tm.push([Math.round((i-origin)*tpq),per(i)]);
+  const all=ev.map(e=>[e[0],0,e]).concat(tm.map(t=>[t[0],-1,t]));all.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||(a[2][1]||0)-(b[2][1]||0));
+  const d=[],vlq=v=>{const b=[v&127];while(v>>=7)b.unshift((v&127)|128);d.push(...b);};
+  vlq(0);d.push(0xff,0x58,4,meter,2,24,8);
+  let tp=0;
+  for(const [t,k,e] of all){vlq(t-tp);tp=t;if(k<0){const us=Math.max(1,Math.round(e[1]*1e6));d.push(0xff,0x51,3,(us>>16)&255,(us>>8)&255,us&255);}else d.push(e[1],e[2],e[3]);}
+  vlq(0);d.push(0xff,0x2f,0);
+  const head=[0x4d,0x54,0x68,0x64,0,0,0,6,0,0,0,1,tpq>>8,tpq&255,0x4d,0x54,0x72,0x6b,(d.length>>>24)&255,(d.length>>16)&255,(d.length>>8)&255,d.length&255];
+  return Uint8Array.from(head.concat(d));
 }
 // ==DSP-END==
 </script>
@@ -2521,7 +2925,7 @@ function updateButtons(){
   $("optSaveAudio").disabled=tabSrc;$("saveAudioNote").textContent=tabSrc?"（タブ録音は数値のみ保存）":"";
   $("btnPlay").disabled=busy||!!rec||!lastRaw||!current;
   $("selExport").disabled=busy||tabSrc;
-  $("edUndo").disabled=busy||!editOrig;$("btnPitch").disabled=busy||!current||!lastRaw;
+  $("edUndo").disabled=busy||!editOrig;$("scRun").disabled=$("tabRun").disabled=$("ntRun").disabled=busy;$("btnPitch").disabled=busy||!current||!lastRaw;
   if(cdcReady&&cdcReady.length)$("cdcRun").disabled=busy||!!rec||!current||!lastRaw;
 }
 function meter(pk,sec,mom,gaps){
@@ -2731,6 +3135,8 @@ self.onmessage=e=>{
     else if(d.cmd==="summary"){out=batchSummary(d.chs,d.fs,d.K,d.layout);}
     else if(d.cmd==="edit"){out=editProcess(d,prog);tr=out.chs.map(c=>c.buffer);if(out.track)tr.push(out.track.t.buffer,out.track.midi.buffer,out.track.tgt.buffer,out.track.shift.buffer);}
     else if(d.cmd==="notes"){out=notesJob(d,prog);}
+    else if(d.cmd==="chords"){out=chordsJob(d,prog);}
+    else if(d.cmd==="tab"){out=tabJob(d,prog);}
     else{out={res:analyzeAll(d.chs,d.fs,Object.assign({},d.opts,{progress:prog})),chs:d.chs};tr=back;}
     self.postMessage({type:"done",out},tr);
   }catch(err){self.postMessage({type:"error",message:String(err&&err.message||err),chs:back.length?d.chs:null},back);}
@@ -4576,13 +4982,13 @@ $("ntLo").value="36";$("ntHi").value="96";
 let ntRes=null,ntAc=null;
 $("ntRun").onclick=async()=>{
   const r=edRange();if(!r)return;const lo=+$("ntLo").value,hi=+$("ntHi").value;if(hi-lo<1){edMsg("音域は低い方から順に選んでください",true);return;}
-  const fs=lastRaw.fs,x=monoFromRaw(r.s0,r.s1),d={x,fs,harm:$("ntHarm").checked,o:{lo,hi,maxPoly:Math.max(1,Math.min(10,+$("ntPoly").value||6)),floorDb:+$("ntSens").value.split(",")[0],rel:+$("ntSens").value.split(",")[1]}};
+  const fs=lastRaw.fs,x=monoFromRaw(r.s0,r.s1),d={x,fs,beats:true,harm:$("ntHarm").checked,o:{mode:$("ntMode").value,meter:+$("scMeter").value||4,bpm:+$("scBpm").value||0,lo,hi,maxPoly:Math.max(1,Math.min(10,+$("ntPoly").value||6)),floorDb:+$("ntSens").value.split(",")[0],rel:+$("ntSens").value.split(",")[1]}};
   busy=true;updateButtons();edMsg("音符の検出…");let out;
   try{out=await runJob(Object.assign({cmd:"notes"},d),[x.buffer],st=>edMsg(st),()=>notesJob(d));}
   catch(e){console.error(e);edMsg("検出できませんでした: "+e.message,true);return;}
   finally{busy=false;updateButtons();}
-  ntRes={notes:out.notes,t0:r.t0,dur:(r.s1-r.s0)/fs,lo,hi,label:current.label};edMsg("");
-  if(current.bpm&&current.bpm.bpm)$("ntBpm").value=Math.round(current.bpm.bpm*10)/10;
+  ntRes={notes:out.notes,t0:r.t0,dur:(r.s1-r.s0)/fs,lo,hi,label:current.label,beats:out.beats||null,phase:out.phase||0};edMsg("");
+  if(out.bpmBeats)$("ntBpm").value=Math.round(out.bpmBeats*10)/10;else if(current.bpm&&current.bpm.bpm)$("ntBpm").value=Math.round(current.bpm.bpm*10)/10;
   $("ntInfo").textContent=out.notes.length?"音符 "+out.notes.length+" 個（"+noteName(Math.min(...out.notes.map(n=>n.p)))+"〜"+noteName(Math.max(...out.notes.map(n=>n.p)))+"）":"音符は見つかりませんでした";
   $("ntSynth").disabled=$("ntMidi").disabled=!out.notes.length;drawNotes();
 };
@@ -4606,8 +5012,80 @@ $("ntSynth").onclick=()=>{
     g.gain.setValueAtTime(0,a);g.gain.linearRampToValueAtTime(n.v/127,a+0.01);g.gain.setTargetAtTime(0,b,0.04);o.connect(g);g.connect(mg);o.start(a);o.stop(b+0.3);end=Math.max(end,n.t1);}
   ntAc=ac;$("ntSynth").textContent="■ 停止";const me=ac;setTimeout(()=>{if(ntAc===me)stopSynth();},(end+0.6)*1000);
 };
-$("ntMidi").onclick=()=>{if(!ntRes||!ntRes.notes.length)return;const bpm=Math.max(20,Math.min(300,+$("ntBpm").value||120));
-  download(new Blob([midiFile(ntRes.notes,bpm)],{type:"audio/midi"}),"notes-"+safeName(ntRes.label)+".mid");};
+$("ntMidi").onclick=()=>{if(!ntRes||!ntRes.notes.length)return;const bpm=Math.max(20,Math.min(300,+$("ntBpm").value||120)),g=+$("ntGrid").value;
+  let data;
+  if(g>=0&&ntRes.beats&&ntRes.beats.length>=3){const B=Array.from(ntRes.beats),meter=+$("scMeter").value||4;data=midiFileBeats(ntRes.notes,B,{meter,grid:g,origin:barOrigin(B,ntRes.phase,meter,ntRes.notes[0].t0)});}
+  else{if(g>=0)edMsg("拍が見つからなかったので、一定のテンポ（"+bpm+" BPM）で書き出しました");data=midiFile(ntRes.notes,bpm);}
+  download(new Blob([data],{type:"audio/midi"}),"notes-"+safeName(ntRes.label)+".mid");};
+// コード譜・TAB 譜
+const INSTR={g6:["ギター（標準 EADGBE）",[40,45,50,55,59,64],22],g6h:["ギター（半音下げ）",[39,44,49,54,58,63],22],g6d:["ギター（ドロップ D）",[38,45,50,55,59,64],22],g6dad:["ギター（DADGAD）",[38,45,50,55,57,62],22],g6og:["ギター（オープン G）",[38,43,50,55,59,62],22],g7:["7 弦ギター",[35,40,45,50,55,59,64],24],b4:["ベース 4 弦",[28,33,38,43],20],b5:["ベース 5 弦",[23,28,33,38,43],20],uk:["ウクレレ（GCEA）",[67,60,64,69],15]};
+for(const k in INSTR)$("tabInst").add(new Option(INSTR[k][0],k));
+$("tabInst").onchange=()=>{$("tabMax").value=INSTR[$("tabInst").value][2];if(scRes)drawChart();};$("tabCapo").onchange=()=>{if(scRes)drawChart();};
+let scRes=null,tabRes=null;
+const instNow=()=>{const i=INSTR[$("tabInst").value];return {name:i[0],open:i[1],capo:Math.max(0,Math.min(12,+$("tabCapo").value||0)),maxFret:Math.max(5,Math.min(24,+$("tabMax").value||i[2]))};};
+const scOpts=()=>({meter:+$("scMeter").value||4,bpm:+$("scBpm").value||0,vocab:$("scVocab").value});
+// 小節ごとの拍のコード名
+function scBars(r){
+  const B=Array.from(r.beats),nb=B.length,flat=flatKey(r.key),per=new Array(Math.max(0,nb-1)).fill(null);
+  for(const c of r.chords)for(let i=c.b0;i<c.b1&&i<per.length;i++)per[i]=chordName(c,flat);
+  const bars=[];for(let s0=barOrigin(B,r.phase,r.meter,null);s0<nb-1;s0+=r.meter){const bs=[];for(let k=0;k<r.meter;k++){const i=s0+k;bs.push(i>=0&&i<nb-1?per[i]:null);}bars.push({t:beatTime(B,Math.max(0,s0)),bs});}
+  return bars;
+}
+// 「C」「C  G」（半分ずつ）「C . . G」（拍ごと）の書き方
+function barLabel(bs){
+  const v=bs.map(b=>b||"");if(v.every(b=>b===v[0]))return v[0]||"—";
+  const h=v.length/2;if(v.length%2===0&&v.slice(0,h).every(b=>b===v[0])&&v.slice(h).every(b=>b===v[h]))return (v[0]||"—")+"  "+(v[h]||"—");
+  return v.map((b,i)=>i>0&&b===v[i-1]?".":b||"—").join(" ");
+}
+function shapeList(){
+  if(!scRes)return [];const ins=instNow();if(ins.open.length<6)return [];
+  const flat=flatKey(scRes.key),seen=new Map();
+  for(const c of scRes.chords){if(c.root<0)continue;const nm=chordName(c,flat);if(seen.has(nm))continue;const sh=chordShape(c,ins.open,ins.capo,ins.maxFret);seen.set(nm,sh?sh.map(v=>v<0?"x":v).join(sh.some(v=>v>9)?"-":""):"（形が見つかりません）");}
+  return [...seen];
+}
+function drawChart(){
+  const r=scRes;if(!r)return;const bars=scBars(r);
+  $("scChart").innerHTML=bars.map((b,i)=>"<div class='scBar' data-t='"+b.t+"' title='クリックでこの小節から再生'><div class='n'>"+(i+1)+"</div><div class='c'>"+esc(barLabel(b.bs))+"</div></div>").join("");
+  const sl=shapeList(),ins=instNow();
+  $("scShapes").innerHTML=sl.length?"押さえ方（"+esc(ins.name)+(ins.capo?"・カポ "+ins.capo+"、カポからのフレット":"")+"、低い弦から）："+sl.map(([n,v])=>"<b>"+esc(n)+"</b> "+esc(v)).join("　"):"";
+}
+$("scChart").onclick=e=>{const b=e.target.closest(".scBar");if(b&&scRes&&current)playFrom(scRes.t0+(+b.dataset.t));};
+$("scRun").onclick=async()=>{
+  const r=edRange();if(!r)return;const fs=lastRaw.fs;if(r.s1-r.s0<fs*4){edMsg("4 秒以上の範囲で使えます",true);return;}
+  const x=monoFromRaw(r.s0,r.s1),d={x,fs,o:scOpts()};busy=true;updateButtons();edMsg("拍とコードの検出…");let out;
+  try{out=await runJob(Object.assign({cmd:"chords"},d),[x.buffer],st=>edMsg(st),()=>chordsJob(d));}
+  catch(e){console.error(e);edMsg("検出できませんでした: "+e.message,true);return;}
+  finally{busy=false;updateButtons();}
+  edMsg("コード譜を作りました");scRes=Object.assign(out,{t0:r.t0,label:current.label,opts:JSON.stringify(scOpts()),range:r.s0+":"+r.s1});
+  $("scInfo").textContent="キー "+out.key.name+"（推定）・"+f1(out.bpm,1)+" BPM・拍 "+out.beats.length+" 個・コード "+out.chords.filter(c=>c.root>=0).length+" 区間";
+  $("scSave").disabled=false;drawChart();
+};
+$("scSave").onclick=()=>{
+  if(!scRes)return;const bars=scBars(scRes).map(b=>barLabel(b.bs)),w=Math.max(8,...bars.map(b=>b.length)),L=[];
+  L.push("コード譜（自動推定）: "+scRes.label,"キー: "+scRes.key.name+"　テンポ: "+f1(scRes.bpm,1)+" BPM　拍子: "+scRes.meter+"/4"+(scRes.key.cents?"　チューニング: A4 = "+f1(440*Math.pow(2,scRes.key.cents/1200),1)+" Hz":""),"");
+  for(let i=0;i<bars.length;i+=4)L.push("| "+bars.slice(i,i+4).map(b=>b.padEnd(w)).join(" | ")+" |");
+  const sl=shapeList(),ins=instNow();if(sl.length){L.push("","押さえ方（"+ins.name+(ins.capo?"・カポ "+ins.capo:"")+"、低い弦から、x は鳴らさない）");for(const [n,v] of sl)L.push(n.padEnd(8)+v);}
+  L.push("","tab-analyzer で自動推定。誤りを含むことがあります。");
+  download(new Blob(["\ufeff"+L.join("\r\n")],{type:"text/plain;charset=utf-8"}),"chords-"+safeName(scRes.label)+".txt");
+};
+$("tabRun").onclick=async()=>{
+  const r=edRange();if(!r)return;const fs=lastRaw.fs;if(r.s1-r.s0<fs*4){edMsg("4 秒以上の範囲で使えます",true);return;}
+  const ins=instNow(),o=Object.assign(scOpts(),{open:ins.open,capo:ins.capo,maxFret:ins.maxFret,mode:$("tabMode").value,grid:+$("tabGrid").value,barsPerLine:+$("tabBars").value,withChords:$("tabChords").checked});
+  const x=monoFromRaw(r.s0,r.s1),d={x,fs,o};
+  // 同じ範囲・同じ設定でコードを検出済みなら使い回す
+  if(scRes&&scRes.label===current.label&&scRes.range===r.s0+":"+r.s1&&scRes.opts===JSON.stringify(scOpts()))d.chords={bpm:scRes.bpm,beats:scRes.beats,meter:scRes.meter,phase:scRes.phase,key:scRes.key,chords:scRes.chords};
+  busy=true;updateButtons();edMsg("TAB 譜の作成…");let out;
+  try{out=await runJob(Object.assign({cmd:"tab"},d),[x.buffer],st=>edMsg(st),()=>tabJob(d));}
+  catch(e){console.error(e);edMsg("作れませんでした: "+e.message,true);return;}
+  finally{busy=false;updateButtons();}
+  edMsg("TAB 譜を作りました");
+  if(!scRes||scRes.range!==r.s0+":"+r.s1||scRes.label!==current.label){scRes=Object.assign(out.chords,{t0:r.t0,label:current.label,opts:JSON.stringify(scOpts()),range:r.s0+":"+r.s1});$("scInfo").textContent="キー "+scRes.key.name+"（推定）・"+f1(scRes.bpm,1)+" BPM";$("scSave").disabled=false;drawChart();}
+  const head="チューニング: "+ins.open.map(p=>noteName(p)).join(" ")+"（"+ins.name+"）"+(ins.capo?"　カポ "+ins.capo+"（フレットはカポから）":"")+"\nテンポ: "+f1(out.chords.bpm,1)+" BPM　拍子: "+out.chords.meter+"/4　1 拍 = "+o.grid+" マス\n";
+  tabRes={text:head+"\n"+out.text,label:current.label};
+  $("tabOut").textContent=tabRes.text;$("tabOut").hidden=false;$("tabSave").disabled=!out.notes.length;
+  $("tabInfo").textContent=out.notes.length?"音符 "+out.notes.length+" 個"+(out.dropped?"（弾けない音 "+out.dropped+" 個を省略）":""):"音符は見つかりませんでした";
+};
+$("tabSave").onclick=()=>{if(!tabRes)return;download(new Blob(["\ufeff"+("TAB 譜（自動推定）: "+tabRes.label+"\n"+tabRes.text+"\ntab-analyzer で自動推定。誤りを含むことがあります。\n").replace(/\n/g,"\r\n")],{type:"text/plain;charset=utf-8"}),"tab-"+safeName(tabRes.label)+".txt");};
 const NAV=["録音","概要","チェック","波形","周波数","ステレオ","ピッチ","比較","音響解析","分離・編集"],PANELS=[...document.querySelectorAll("main section.panel")];
 PANELS.forEach((p,i)=>{p.id=p.id||("sec"+(i+1));});
 $("tbNav").innerHTML=PANELS.map((p,i)=>"<a href='#"+p.id+"' data-i='"+i+"'>"+(NAV[i]||p.querySelector("h2").textContent)+"</a>").join("");
